@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.7
+# syntax=docker/dockerfile:1.4
 FROM rust:1.74.0 AS dependencies
 
 WORKDIR /src/
@@ -47,14 +47,15 @@ COPY groth16/stark_verify.circom ./groth16/stark_verify.circom
 COPY groth16/verify_for_guest.circom ./groth16/verify_for_guest.circom
 
 # Build the witness generation
-RUN (cd groth16; circom --c verify_for_guest.circom) && \
+RUN (cd groth16; circom --c --r1cs verify_for_guest.circom) && \
   sed -i 's/g++/clang++/' groth16/verify_for_guest_cpp/Makefile && \
   sed -i 's/O3/O0/' groth16/verify_for_guest_cpp/Makefile && \
   (cd groth16/verify_for_guest_cpp; make)
 
 # Download the proving key
-RUN wget https://risc0-artifacts.s3.us-west-2.amazonaws.com/zkey/2024-05-17.1/stark_verify_final.zkey.gz -O groth16/verify_for_guest_final.zkey.gz && \
-  (cd groth16; gzip -df verify_for_guest_final.zkey.gz)
+# RUN (cd groth16; wget https://storage.googleapis.com/zkevm/ptau/powersOfTau28_hez_final_23.ptau)
+
+# RUN (cd groth16; snarkjs g16s verify_for_guest.r1cs pot23.ptau circuit.zkey)
 
 # Create a final clean image with all the dependencies to perform stark->snark
 FROM ubuntu:jammy-20231211.1@sha256:bbf3d1baa208b7649d1d0264ef7d522e1dc0deeeaaf6085bf8e4618867f03494 AS prover
@@ -67,7 +68,7 @@ COPY scripts/prover.sh /app/prover.sh
 COPY --from=builder /usr/local/sbin/rapidsnark /usr/local/sbin/rapidsnark
 COPY --from=builder /src/groth16/verify_for_guest_cpp/verify_for_guest /app/verify_for_guest
 COPY --from=builder /src/groth16/verify_for_guest_cpp/verify_for_guest.dat /app/verify_for_guest.dat
-COPY --from=builder /src/groth16/verify_for_guest_final.zkey /app/verify_for_guest_final.zkey
+COPY groth16/verify_for_guest_final.zkey /app/verify_for_guest_final.zkey
 
 WORKDIR /app
 RUN chmod +x prover.sh
