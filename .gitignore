@@ -2,4 +2,8 @@
 
 /work_dir
 fflonk_proof/groth16/pot23.ptau
+fflonk_proof/groth16/verify_for_guest_0000.zkey
+fflonk_proof/groth16/verify_for_guest_0001.zkey
+fflonk_proof/groth16/verify_for_guest_final.zkey
+fflonk_proof/groth16/verify_for_guest_verification_key.json
 groth16/pot23.ptau

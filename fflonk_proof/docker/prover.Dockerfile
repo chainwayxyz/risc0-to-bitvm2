@@ -42,15 +42,22 @@ RUN git submodule init && \
 FROM dependencies AS builder
 
 WORKDIR /src/
-COPY groth16/risc0.circom ./groth16/risc0.circom
-COPY groth16/stark_verify.circom ./groth16/stark_verify.circom
-COPY groth16/verify_for_guest.circom ./groth16/verify_for_guest.circom
+COPY groth16/circuits/aliascheck.circom ./groth16/circuits/aliascheck.circom
+COPY groth16/circuits/binsum.circom ./groth16/circuits/binsum.circom
+COPY groth16/circuits/bitify.circom ./groth16/circuits/bitify.circom
+COPY groth16/circuits/comparators.circom ./groth16/circuits/comparators.circom
+COPY groth16/circuits/compconstant.circom ./groth16/circuits/compconstant.circom
+COPY groth16/circuits/risc0.circom ./groth16/circuits/risc0.circom
+COPY groth16/circuits/journal.circom ./groth16/circuits/journal.circom
+COPY groth16/circuits/stark_verify.circom ./groth16/circuits/stark_verify.circom
+COPY groth16/circuits/verify_for_guest.circom ./groth16/circuits/verify_for_guest.circom
+COPY groth16/circuits/sha256 ./groth16/circuits/sha256
 
 # Build the witness generation
-RUN (cd groth16; circom --c --r1cs verify_for_guest.circom) && \
-  sed -i 's/g++/clang++/' groth16/verify_for_guest_cpp/Makefile && \
-  sed -i 's/O3/O0/' groth16/verify_for_guest_cpp/Makefile && \
-  (cd groth16/verify_for_guest_cpp; make)
+RUN (cd groth16/circuits; circom --c --r1cs verify_for_guest.circom) && \
+  sed -i 's/g++/clang++/' groth16/circuits/verify_for_guest_cpp/Makefile && \
+  sed -i 's/O3/O0/' groth16/circuits/verify_for_guest_cpp/Makefile && \
+  (cd groth16/circuits/verify_for_guest_cpp; make)
 
 # Download the proving key
 # RUN (cd groth16; wget https://storage.googleapis.com/zkevm/ptau/powersOfTau28_hez_final_23.ptau)
@@ -66,8 +73,8 @@ RUN apt update -qq && \
 
 COPY scripts/prover.sh /app/prover.sh
 COPY --from=builder /usr/local/sbin/rapidsnark /usr/local/sbin/rapidsnark
-COPY --from=builder /src/groth16/verify_for_guest_cpp/verify_for_guest /app/verify_for_guest
-COPY --from=builder /src/groth16/verify_for_guest_cpp/verify_for_guest.dat /app/verify_for_guest.dat
+COPY --from=builder /src/groth16/circuits/verify_for_guest_cpp/verify_for_guest /app/verify_for_guest
+COPY --from=builder /src/groth16/circuits/verify_for_guest_cpp/verify_for_guest.dat /app/verify_for_guest.dat
 COPY groth16/verify_for_guest_final.zkey /app/verify_for_guest_final.zkey
 
 WORKDIR /app

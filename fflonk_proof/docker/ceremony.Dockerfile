@@ -22,12 +22,20 @@ ENV CXX=clang++
 FROM dependencies AS builder
 
 WORKDIR /src/
-COPY groth16/risc0.circom ./groth16/risc0.circom
-COPY groth16/stark_verify.circom ./groth16/stark_verify.circom
-copy groth16/verify_for_guest.circom ./groth16/verify_for_guest.circom
+COPY groth16/circuits/aliascheck.circom ./groth16/circuits/aliascheck.circom
+COPY groth16/circuits/binsum.circom ./groth16/circuits/binsum.circom
+COPY groth16/circuits/bitify.circom ./groth16/circuits/bitify.circom
+COPY groth16/circuits/comparators.circom ./groth16/circuits/comparators.circom
+COPY groth16/circuits/compconstant.circom ./groth16/circuits/compconstant.circom
+COPY groth16/circuits/risc0.circom ./groth16/circuits/risc0.circom
+COPY groth16/circuits/journal.circom ./groth16/circuits/journal.circom
+COPY groth16/circuits/stark_verify.circom ./groth16/circuits/stark_verify.circom
+COPY groth16/circuits/verify_for_guest.circom ./groth16/circuits/verify_for_guest.circom
+COPY groth16/circuits/sha256 ./groth16/circuits/sha256
+
 
 # Build the r1cs
-RUN (cd groth16; circom --r1cs verify_for_guest.circom)
+RUN (cd groth16/circuits; circom --r1cs verify_for_guest.circom)
 
 # Create a final clean image with all the dependencies to run the ceremony
 FROM node AS ceremony
@@ -38,8 +46,8 @@ WORKDIR /ceremony
 RUN npm install -g snarkjs@0.7.4
 
 COPY scripts/run_ceremony.sh .
-COPY --from=builder /src/groth16/verify_for_guest.r1cs /ceremony/verify_for_guest.r1cs
+COPY --from=builder /src/groth16/circuits/verify_for_guest.r1cs /ceremony/circuits/verify_for_guest.r1cs
 RUN chmod +x run_ceremony.sh
 RUN ulimit -s unlimited
 
-ENTRYPOINT ["/ceremony/run_ceremony.sh", "/ceremony/verify_for_guest.r1cs", "/ceremony/groth16/pot23.ptau"]
+ENTRYPOINT ["/ceremony/run_ceremony.sh", "/ceremony/circuits/verify_for_guest.r1cs", "/ceremony/groth16/pot23.ptau"]
