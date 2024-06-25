@@ -71,13 +71,14 @@ fn main() {
     let (receipt, multiplication, image_id) = multiply(1923, 2024);
     // println!("Receipt: {:?}", receipt);
     // println!("Result: {:?}", multiplication)
-    println!("Seal: {:?}", receipt.inner.claim());
+    println!("Seal claim: {:?}", receipt.inner.claim());
     let journal_bytes = receipt.journal.bytes;
     let composite_receipt = receipt.inner.composite().unwrap();
     let prover = get_prover_server(&ProverOpts::default()).unwrap();
     let succinct_receipt = prover.composite_to_succinct(composite_receipt).unwrap();
     println!("Succinct receipt claim: {:?}", receipt.inner.claim());
     let ident_receipt = prover.identity_p254(&succinct_receipt).unwrap();
+    println!("Identity receipt control_id: {:?}", ident_receipt.control_id);
 
     let identity_p254_seal_bytes = ident_receipt.get_seal_bytes();
 
