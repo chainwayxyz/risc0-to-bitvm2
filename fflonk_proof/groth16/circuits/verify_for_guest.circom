@@ -3,18 +3,31 @@ pragma circom 2.0.4;
 include "stark_verify.circom";
 include "journal.circom";
 
-template VerifyForGuest() {
-    signal input journal[32];
+template VerifyForGuest(n) {
+    signal input journal[(n \ 254)+1];
+    component input_n2b[(n \ 254)];
+    component input_last_n2b = Num2Bits((n % 254));
+
+    for (var i = 0; i < (n \ 254); i++) {
+        input_n2b[i] = Num2Bits(254);
+        input_n2b[i].in <== journal[i];
+    }
+    input_last_n2b.in <== journal[(n \ 254)];
     signal input iop[25749];
     component stark_verifier = Verify();
-    component claim = Journal();
+    component claim = Journal(n);
 
     for (var i = 0; i < 25749; i++) {
         stark_verifier.iop[i] <== iop[i];
     }
 
-    for (var i = 0; i < 32; i++) {
-        claim.in[i] <== journal[i];
+    for (var i = 0; i < (n \ 254); i++) {
+        for (var j = 0; j < 254; j++) {
+            claim.journal_bytes_in[254 * i + j] <== input_n2b[i].out[j];
+        }
+    }
+    for (var j = 0; j < (n % 254); j++) {
+        claim.journal_bytes_in[254 * (n \ 254) + j] <== input_last_n2b.out[j];
     }
 
     log("out_0");
@@ -39,4 +52,4 @@ template VerifyForGuest() {
     stark_verifier.codeRoot === 6655704183316983190945468237220041514376883004657559498672647785620383118673;
 }
 
-component main { public [ journal ] } = VerifyForGuest();
+component main { public [ journal ] } = VerifyForGuest(32);

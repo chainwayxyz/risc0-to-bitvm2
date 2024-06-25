@@ -3,8 +3,8 @@ pragma circom 2.0.4;
 include "sha256/sha256.circom";
 include "bitify.circom";
 
-template Journal() {
-    signal input in[32]; // journal in bits
+template Journal(n) {
+    signal input journal_bytes_in[n]; // journal in bits
     signal output out[2];
     component claim_hasher = Sha256(1360); // hash(receipt_claim_tag_hash, claim_input_digest, claim_pre_digest, claim_post_digest, claim_output_digest, 00000000000000000400)
     component output_hasher = Sha256(784); // Depends on journal, hash(output_tag_hash, journal_digest, [0u8; 32], 0200)
@@ -15,8 +15,8 @@ template Journal() {
     var output_tag_bytes[256] = [0,1,1,1,0,1,1,1,1,1,1,0,1,0,1,0,1,1,1,1,1,1,1,0,1,0,1,1,0,0,1,1,0,1,1,0,0,1,1,0,1,0,1,0,0,1,1,1,1,0,0,0,1,0,1,1,0,1,0,0,0,1,1,1,0,1,1,1,0,1,0,0,0,1,1,1,1,1,0,1,1,1,1,0,0,0,0,0,1,1,0,1,0,1,1,1,1,0,1,1,1,0,1,1,0,0,0,1,0,1,1,1,0,1,1,0,0,0,1,0,1,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,1,0,1,1,1,1,1,1,1,1,1,0,1,0,1,0,1,0,1,0,1,1,0,0,1,0,0,1,0,0,0,1,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,1,0,0,1,1,0,1,0,0,1,0,1,1,0,1,1,1,1,1,0,0,1,1,0,0,0,1,1,1,1,0,1,1,0,1,0,0,0,1,1,0,0,1,0,1,1,0,1,0,0,1,1,0,1,0,1,0,1,0,1,1,0,0,1,1,1,0,1,0,1,0,0];
     // output_tag = 54240429074780157751094335427642025272505087342533963631932091736940340402644; // Constant = hash("risc0.Output")
 
-    component journal_hasher = Sha256(32); // Depends on journal, hash(journal)
-    journal_hasher.in <== in;
+    component journal_hasher = Sha256(n); // Depends on journal, hash(journal)
+    journal_hasher.in <== journal_bytes_in;
 
     log("journal_digest");
     for (var i = 0; i < 256; i++) {
