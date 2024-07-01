@@ -24,7 +24,7 @@ use risc0_zkvm::{default_prover, ExecutorEnv, Receipt};
 // The factors a and b are kept secret.
 
 // Compute the product a*b inside the zkVM
-pub fn multiply(a: u32, b: u32) -> (Receipt, u32, [u32; 8]) {
+pub fn multiply(a: u32, b: u32) -> (Receipt, Vec<u32>, [u32; 8]) {
     let env = ExecutorEnv::builder()
         // Send a & b to the guest
         .write(&a)
@@ -41,12 +41,12 @@ pub fn multiply(a: u32, b: u32) -> (Receipt, u32, [u32; 8]) {
     let receipt = prover.prove(env, MULTIPLY_ELF).unwrap().receipt;
 
     // Extract journal of receipt (i.e. output c, where c = a * b)
-    let c: u32 = receipt.journal.decode().expect(
+    let c: Vec<u32> = receipt.journal.decode().expect(
         "Journal output should deserialize into the same types (& order) that it was written",
     );
 
     // Report the product
-    println!("I know the factors of {}, and I can prove it!", c);
+    println!("I know the factors of {:#?}, and I can prove it!", c);
 
     (receipt, c, MULTIPLY_ID)
 }

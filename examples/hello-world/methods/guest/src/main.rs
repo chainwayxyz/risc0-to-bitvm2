@@ -30,6 +30,9 @@ fn main() {
     }
     // Compute the product while being careful with integer overflow
     let product = a.checked_mul(b).expect("Integer overflow");
-    env::commit(&product);
+    for i in 0..63 {
+        env::commit(&31u32);
+    }
+    // env::commit(&product);
     // env::commit(&1u32);
 }

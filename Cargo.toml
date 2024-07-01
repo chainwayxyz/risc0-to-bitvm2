@@ -14,3 +14,6 @@ serde_json = "1.0.108"
 risc0-groth16 = {version="1.0.1", features=["prove"]}
 hello-world = {path="./examples/hello-world"}
 tempfile = "3.10.1"
+crypto-bigint = { git = "https://github.com/risc0/RustCrypto-crypto-bigint", tag = "v0.5.2-risczero.0", default-features = false }
+num-bigint = { version="0.4.5", features=["std"] }
+num-traits = "0.2.19"

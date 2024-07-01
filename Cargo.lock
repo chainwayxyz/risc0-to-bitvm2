@@ -537,6 +537,15 @@ checksum = "22ec99545bb0ed0ea7bb9b8e1e9122ea386ff8a48c0922e43f36d45ab09e0e80"
 
 [[package]]
 name = "crypto-bigint"
+version = "0.5.2"
+source = "git+https://github.com/risc0/RustCrypto-crypto-bigint?tag=v0.5.2-risczero.0#8b30304277cfe553b51a78a0e693f48bbb059eb3"
+dependencies = [
+ "getrandom",
+ "subtle",
+]
+
+[[package]]
+name = "crypto-bigint"
 version = "0.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0dc92fb57ca44df6db8059111ab3af99a63d5d0f8375d9972e319a379c6bab76"
@@ -2043,7 +2052,7 @@ dependencies = [
  "bytemuck",
  "cfg-if",
  "crossbeam",
- "crypto-bigint",
+ "crypto-bigint 0.5.5",
  "derive-debug",
  "lazy-regex",
  "nvtx",
@@ -2120,9 +2129,12 @@ dependencies = [
 name = "risc0-to-fflonk"
 version = "0.1.0"
 dependencies = [
+ "crypto-bigint 0.5.2",
  "env_logger",
  "hello-world",
  "hex",
+ "num-bigint 0.4.5",
+ "num-traits",
  "risc0-groth16",
  "risc0-zkvm",
  "serde",

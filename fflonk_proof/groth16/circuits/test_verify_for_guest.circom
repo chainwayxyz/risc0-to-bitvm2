@@ -1,7 +1,7 @@
 pragma circom 2.0.4;
 
-include "stark_verify.circom";
-include "journal.circom";
+include "test_stark_verify.circom";
+include "test_journal.circom";
 
 template VerifyForGuest(n) {
     signal input journal[((n + 251) \ 252)];
