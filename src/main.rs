@@ -9,7 +9,7 @@ use hello_world::multiply;
 use num_bigint::BigUint;
 use num_traits::Num;
 use risc0_groth16::{to_json, Fr, ProofJson, Seal};
-use risc0_zkvm::{default_prover, get_prover_server, ProverOpts};
+use risc0_zkvm::{default_prover, get_prover_server, Groth16Receipt, ProverOpts, VerifierContext};
 use serde_json::Value;
 use tempfile::tempdir;
 
@@ -70,7 +70,7 @@ pub fn stark_to_fflonk(identity_p254_seal_bytes: &[u8], journal: &[u8]) {
         .arg("--rm")
         .arg("-v")
         .arg(&format!("{}:/mnt", work_dir.to_string_lossy()))
-        .arg("risc0-groth16-test-prover")
+        .arg("risc0-groth16-prover")
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .output()
@@ -128,6 +128,9 @@ fn main() {
     let prover = get_prover_server(&ProverOpts::default()).unwrap();
     let succinct_receipt = prover.composite_to_succinct(composite_receipt).unwrap();
     println!("Succinct receipt claim: {:?}", receipt.inner.claim());
+    let groth16_proof = prover.succinct_to_groth16(&succinct_receipt).unwrap();
+    let res = groth16_proof.verify_integrity_with_context(&VerifierContext::default());
+    println!("Verification result: {:?}", res);
     let ident_receipt = prover.identity_p254(&succinct_receipt).unwrap();
     println!(
         "Identity receipt control_id: {:?}",
