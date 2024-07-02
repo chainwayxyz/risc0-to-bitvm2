@@ -114,21 +114,25 @@ fn main() {
             &curr_nonce.to_le_bytes()
         );
     }
-    let mut dummy_groth16_proof: [[u8; 32]; 8] = [[0u8; 32]; 8];
-    for i in 0..8 {
-        dummy_groth16_proof[i] = env::read();
+    let mut dummy_groth16_proof: [[u8; 33]; 4] = [[0u8; 33]; 4];
+    for i in 0..4 {
+        for j in 0..33 {
+            dummy_groth16_proof[i][j] = env::read();
+        }
     }
     let dummy_challenge_period: u32 = env::read();
     let curr = env::cycle_count();
     tracing::info!("Cycle count: {}", curr);
-    let mut env_dummy_groth16_proof: [[u32; 8]; 8] = [[0u32; 8]; 8];
-    for i in 0..8 {
-        for j in 0..8 {
-            env_dummy_groth16_proof[i][j] = (dummy_groth16_proof[i][4 * j] as u32)
-                + ((dummy_groth16_proof[i][4 * j + 1] as u32) << 8)
-                + ((dummy_groth16_proof[i][4 * j + 2] as u32) << 16)
-                + ((dummy_groth16_proof[i][4 * j + 3] as u32) << 24);
+    let mut dummy_groth16_proof_bytes: [u8; 132] = [0u8; 132];
+    for i in 0..4 {
+        for j in 0..33 {
+            let idx = 33 * i + j;
+            dummy_groth16_proof_bytes[idx] = dummy_groth16_proof[i][j];
         }
+    }
+    let mut env_dummy_groth16_proof = [0u32; 33];
+    for i in 0..33 {
+        env_dummy_groth16_proof[i] = (dummy_groth16_proof_bytes[4 * i] as u32) + ((dummy_groth16_proof_bytes[4 * i + 1] as u32) << 8) + ((dummy_groth16_proof_bytes[4 * i + 2] as u32) << 16) + ((dummy_groth16_proof_bytes[4 * i + 3] as u32) << 24);
     }
     let mut env_curr_prev_block_hash: [u32; 8] = [0u32; 8];
     for i in 0..8 {
@@ -139,8 +143,12 @@ fn main() {
     for i in 0..8 {
         env_total_work[i] = (total_work_bytes[4 * i] as u32) + ((total_work_bytes[4 * i + 1] as u32) << 8) + ((total_work_bytes[4 * i + 2] as u32) << 16) + ((total_work_bytes[4 * i + 3] as u32) << 24);
     }
+    let mut env_groth16_proof_32_bytes = [0u32; 32];
+    env_groth16_proof_32_bytes.copy_from_slice(&env_dummy_groth16_proof[0..32]);
+    let env_groth16_proof_last = env_dummy_groth16_proof[32];
     // Outputs:
-    env::commit(&env_dummy_groth16_proof);
+    env::commit(&env_groth16_proof_32_bytes);
+    env::commit(&env_groth16_proof_last);
     env::commit(&env_total_work);
     env::commit(&env_curr_prev_block_hash);
     env::commit(&dummy_challenge_period);

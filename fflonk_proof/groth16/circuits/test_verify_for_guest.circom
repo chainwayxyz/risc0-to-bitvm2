@@ -59,4 +59,4 @@ template VerifyForGuest(n) {
     stark_verifier.codeRoot === 6655704183316983190945468237220041514376883004657559498672647785620383118673;
 }
 
-component main { public [ journal ] } = VerifyForGuest(2592);
+component main { public [ journal ] } = VerifyForGuest(1600);

@@ -20,7 +20,7 @@ const HEADERS_HEX: [&str; 11] = [
     "01000000e915d9a478e3adf3186c07c61a22228b10fd87df343c92782ecc052c000000006e06373c80de397406dc3d19c90d71d230058d28293614ea58d6a57f8f5d32f8b8ce6649ffff001d173807f8"
 ];
 
-pub fn calculate_pow() -> (Receipt, ([u8; 32], [u8; 32]), [u32; 8]) {
+pub fn calculate_pow() -> (Receipt, ([u32; 8], [u32; 8]), [u32; 8]) {
     let mut env = ExecutorEnv::builder();
 
     let headers: Vec<Header> = HEADERS_HEX
@@ -41,9 +41,11 @@ pub fn calculate_pow() -> (Receipt, ([u8; 32], [u8; 32]), [u32; 8]) {
         env.write(&bits).unwrap();
         env.write(&nonce).unwrap();
     }
-    let dummy_groth16_proof = [[0u8; 32]; 8];
-    for i in 0..8 {
-        env.write(&dummy_groth16_proof[i]).unwrap();
+    let dummy_groth16_proof = [[0u8; 33]; 4];
+    for i in 0..4 {
+        for j in 0..33 {
+            env.write(&dummy_groth16_proof[i][j]).unwrap();
+        }
     }
     let dummy_challenge_period = 0u32;
     env.write(&dummy_challenge_period).unwrap();
@@ -58,7 +60,7 @@ pub fn calculate_pow() -> (Receipt, ([u8; 32], [u8; 32]), [u32; 8]) {
     let receipt = prover.prove(env, CALCULATE_POW_ELF).unwrap().receipt;
 
     // Extract journal of receipt (i.e. output c, where c = a * b)
-    let (last_block_hash, pow): ([u8; 32], [u8; 32]) = receipt.journal.decode().expect(
+    let (dummy_groth16_proof_32, dummy_groth16_proof_last, pow, last_block_hash, challenge_period): ([u32; 32], u32, [u32; 8], [u32; 8], u32) = receipt.journal.decode().expect(
         "Journal output should deserialize into the same types (& order) that it was written",
     );
 
