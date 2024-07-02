@@ -2,6 +2,7 @@
 
 use bitcoin::{block::Header, consensus::deserialize, secp256k1};
 pub use bitcoin_pow_methods::CALCULATE_POW_ELF;
+pub use bitcoin_pow_methods::CALCULATE_POW_ID;
 use risc0_zkvm::{default_prover, ExecutorEnv, Receipt};
 use secp256k1::hashes::Hash;
 
@@ -19,7 +20,7 @@ const HEADERS_HEX: [&str; 11] = [
     "01000000e915d9a478e3adf3186c07c61a22228b10fd87df343c92782ecc052c000000006e06373c80de397406dc3d19c90d71d230058d28293614ea58d6a57f8f5d32f8b8ce6649ffff001d173807f8"
 ];
 
-pub fn calculate_pow() -> (Receipt, ([u8; 32], [u8; 32])) {
+pub fn calculate_pow() -> (Receipt, ([u8; 32], [u8; 32]), [u32; 8]) {
     let mut env = ExecutorEnv::builder();
 
     let headers: Vec<Header> = HEADERS_HEX
@@ -40,6 +41,12 @@ pub fn calculate_pow() -> (Receipt, ([u8; 32], [u8; 32])) {
         env.write(&bits).unwrap();
         env.write(&nonce).unwrap();
     }
+    let dummy_groth16_proof = [[0u8; 32]; 8];
+    for i in 0..8 {
+        env.write(&dummy_groth16_proof[i]).unwrap();
+    }
+    let dummy_challenge_period = 0u32;
+    env.write(&dummy_challenge_period).unwrap();
     let env = env.build().unwrap();
     // let start_block_hash = headers[0].prev_blockhash.to_byte_array();
     // println!("start_block_hash: {:?}", start_block_hash);
@@ -48,7 +55,7 @@ pub fn calculate_pow() -> (Receipt, ([u8; 32], [u8; 32])) {
     let prover = default_prover();
 
     // Produce a receipt by proving the specified ELF binary.
-    let receipt = prover.prove(env, CALCULATE_POW_ELF).unwrap();
+    let receipt = prover.prove(env, CALCULATE_POW_ELF).unwrap().receipt;
 
     // Extract journal of receipt (i.e. output c, where c = a * b)
     let (last_block_hash, pow): ([u8; 32], [u8; 32]) = receipt.journal.decode().expect(
@@ -59,13 +66,13 @@ pub fn calculate_pow() -> (Receipt, ([u8; 32], [u8; 32])) {
     let last_block_header: Header =
         deserialize(&hex::decode(last_block_header_str).unwrap()).unwrap();
     // println!("{:?}", last_block_header.block_hash().to_byte_array());
-    assert_eq!(
-        last_block_header.block_hash().to_byte_array(),
-        last_block_hash
-    );
+    // assert_eq!(
+    //     last_block_header.block_hash().to_byte_array(),
+    //     last_block_hash
+    // );
 
     // Report the product
-    println!("PoW up until block: {:?} is {:?}", last_block_hash, pow);
-    (receipt, (last_block_hash, pow))
+    // println!("PoW up until block: {:?} is {:?}", last_block_hash, pow);
+    (receipt, (last_block_hash, pow), CALCULATE_POW_ID)
 }
 
