@@ -6,6 +6,7 @@ include "test_journal.circom";
 template VerifyForGuest(n) {
     signal input journal[((n + 251) \ 252)];
     signal input pre_state_digest_bits[256];
+    signal output journal_digest_252;
     component input_n2b[(n \ 252)];
 
     for (var i = 0; i < (n \ 252); i++) {
@@ -56,7 +57,13 @@ template VerifyForGuest(n) {
     stark_verifier.out[2] === claim.out[0];
     stark_verifier.out[3] === claim.out[1];
 
+    component journal_digest_b2n = Bits2Num(252);
+    for (var i = 0; i < 252; i++) {
+        journal_digest_b2n.in[i] <== claim.journal_digest_252[251 - i];
+    }
+    journal_digest_252 <== journal_digest_b2n.out;
+
     stark_verifier.codeRoot === 6655704183316983190945468237220041514376883004657559498672647785620383118673;
 }
 
-component main { public [ journal ] } = VerifyForGuest(1600);
+component main = VerifyForGuest(1600);

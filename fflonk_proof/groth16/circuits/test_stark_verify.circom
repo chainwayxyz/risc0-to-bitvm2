@@ -3,7 +3,7 @@ pragma circom 2.0.4;
 include "risc0.circom";
 
 template Verify() {
-      signal input iop[25749];
+  signal input iop[25749];
   signal out_tmp[32];
   signal output out[4];
   signal output codeRoot;

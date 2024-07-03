@@ -30,6 +30,8 @@ pub fn stark_to_fflonk(identity_p254_seal_bytes: &[u8], journal: &[u8], pre_stat
     let mut seal_json = Vec::new();
     // println!("Seal: {:?}", seal_json);
     to_json(identity_p254_seal_bytes, &mut seal_json).unwrap();
+    let journal_hex = hex::encode(journal);
+    println!("Journal hex: {:?}", journal_hex);
     let mut journal_bits = Vec::new();
     for byte in journal {
         for i in 0..8 {

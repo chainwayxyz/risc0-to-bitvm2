@@ -7,6 +7,7 @@ template Journal(n) {
     signal input journal_bytes_in[n]; // journal in bits
     signal input pre_state_digest_bits[256]; // pre_state_digest in bytes, this is kind of needed since it changes each time a different guest circuit is used
     signal output out[2];
+    signal output journal_digest_252[252];
     component claim_hasher = Sha256(1360); // hash(receipt_claim_tag_hash, claim_input_digest, claim_pre_digest, claim_post_digest, claim_output_digest, 00000000000000000400)
     component output_hasher = Sha256(784); // Depends on journal, hash(output_tag_hash, journal_digest, [0u8; 32], 0200)
     // pre_digest = 60890323955764732393576659129306652353038634169504427485921095890475307913310; // Change this depending on the circuit
@@ -114,4 +115,7 @@ template Journal(n) {
         }
     }
     out[1] <== b2n_2.out;
+    for (var i = 0; i < 252; i++) {
+        journal_digest_252[i] <== journal_hasher.out[i];
+    }
 }
