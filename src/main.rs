@@ -6,11 +6,12 @@ use std::{
 
 use bitcoin_pow::calculate_pow;
 use crypto_bigint::U256;
-use hello_world::multiply;
+// use hello_world::multiply;
 use num_bigint::BigUint;
 use num_traits::Num;
-use risc0_groth16::{to_json, Fr, ProofJson, Seal};
-use risc0_zkvm::{default_prover, get_prover_server, Groth16Receipt, ProverOpts, VerifierContext};
+use risc0_groth16::to_json;
+// use risc0_groth16::ProofJson;
+use risc0_zkvm::{get_prover_server, ProverOpts, VerifierContext};
 use serde_json::Value;
 use std::env;
 use std::str::FromStr;
@@ -38,7 +39,6 @@ pub fn stark_to_fflonk(identity_p254_seal_bytes: &[u8], journal: &[u8], pre_stat
             journal_bits.push((byte >> (7 - i)) & 1);
         }
     }
-    println!("Journal bits: {:?}", journal_bits);
     let q = journal_bits.len() / 252;
     let r = journal_bits.len() % 252;
     let mut journal_chunks: Vec<U256> = Vec::new();
@@ -51,13 +51,6 @@ pub fn stark_to_fflonk(identity_p254_seal_bytes: &[u8], journal: &[u8], pre_stat
     if r > 0 {
         journal_chunks.push(bits_to_num(r, &journal_bits[q * 252..].to_vec()));
     }
-    println!("Journal chunks: {:?}", journal_chunks);
-    // let journal_json = serde_json::json!({ "journal": journal_bits });
-    // std::fs::write(seal_path.clone(), seal_json).unwrap();
-    // read the seal file
-    // let seal_contents = std::fs::read_to_string(seal_path.clone()).unwrap();
-
-    // println!("Seal contents: {:?}", seal_contents);
     let mut seal_json: Value = {
         let file_content = fs::read_to_string(&seal_path).unwrap();
         serde_json::from_str(&file_content).unwrap()
@@ -67,9 +60,7 @@ pub fn stark_to_fflonk(identity_p254_seal_bytes: &[u8], journal: &[u8], pre_stat
         .iter()
         .map(|s| to_decimal(&s.to_string()).unwrap())
         .collect::<Vec<String>>();
-    println!("Journal str vec: {:?}", journal_str_vec);
     seal_json["journal"] = journal_str_vec.into();
-    println!("pre_state_bits: {:?}", pre_state_bits);
     seal_json["pre_state_digest_bits"] = pre_state_bits.to_vec().into();
     std::fs::write(seal_path, serde_json::to_string_pretty(&seal_json).unwrap()).unwrap();
 
@@ -92,11 +83,10 @@ pub fn stark_to_fflonk(identity_p254_seal_bytes: &[u8], journal: &[u8], pre_stat
             output.status.code()
         );
     }
-
-    let contents = std::fs::read_to_string(proof_path).unwrap();
-    let proof_json: ProofJson = serde_json::from_str(&contents).unwrap();
-    // let proof = proof_json.try_into().unwrap();
-    println!("proof: {:?}", proof_json);
+    // This part works for only Groth16 proofs
+    // let contents = std::fs::read_to_string(proof_path).unwrap();
+    // let proof_json: ProofJson = serde_json::from_str(&contents).unwrap();
+    // println!("proof: {:?}", proof_json);
 }
 
 pub fn bits_to_num(len: usize, bits: &Vec<u8>) -> U256 {
@@ -130,7 +120,7 @@ pub fn to_decimal(s: &str) -> Option<String> {
 
 fn main() {
     // initialize_logging();
-    let (receipt, (last_block_hash, pow), IMAGE_ID) = calculate_pow();
+    let (receipt, (_last_block_hash, _pow), IMAGE_ID) = calculate_pow();
     println!("IMAGE_ID: {:?}", IMAGE_ID);
     let mut pre_state_bits: Vec<u8> = Vec::new();
     for i in 0..8 {
@@ -140,16 +130,10 @@ fn main() {
             }
         }
     }
-    println!("Pre state bits: {:?}", pre_state_bits);
-    // pre_state_bits.reverse();
-    // println!("Receipt: {:?}", receipt);
-    // println!("Result: {:?}", multiplication)
-    println!("Seal claim: {:?}", receipt.inner.claim());
     let journal_bytes = receipt.journal.bytes;
     let composite_receipt = receipt.inner.composite().unwrap();
     let prover = get_prover_server(&ProverOpts::default()).unwrap();
     let succinct_receipt = prover.composite_to_succinct(composite_receipt).unwrap();
-    let pre_state_digest = receipt.inner.claim().ok().unwrap();
     println!("Succinct receipt claim: {:?}", receipt.inner.claim());
     let groth16_proof = prover.succinct_to_groth16(&succinct_receipt).unwrap();
     let res = groth16_proof.verify_integrity_with_context(&VerifierContext::default());
@@ -161,11 +145,8 @@ fn main() {
     );
 
     let identity_p254_seal_bytes = ident_receipt.get_seal_bytes();
-    let fflonk_proof = stark_to_fflonk(&identity_p254_seal_bytes, &journal_bytes, &pre_state_bits);
+    let _fflonk_proof = stark_to_fflonk(&identity_p254_seal_bytes, &journal_bytes, &pre_state_bits);
     // let groth16_proof = stark_to_snark(&identity_p254_seal_bytes).unwrap();
-
-    // let compressed_proof = prover.compress(&ProverOpts::groth16(), &receipt).unwrap();
-    // println!("Compressed proof: {:?}", compressed_proof);
 }
 
 pub fn initialize_logging() {
@@ -173,7 +154,7 @@ pub fn initialize_logging() {
         .with(fmt::layer())
         .with(
             EnvFilter::from_str(
-                &env::var("RUST_LOG").unwrap_or_else(|_| "debug,bitcoincore_rpc=info".to_string()),
+                &env::var("RUST_LOG").unwrap_or_else(|_| "debug".to_string()),
             )
             .unwrap(),
         )
