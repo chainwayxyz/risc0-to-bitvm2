@@ -5,6 +5,8 @@ include "journal.circom";
 
 template VerifyForGuest(n) {
     signal input journal[((n + 251) \ 252)];
+    signal input pre_state_digest_bits[256];
+    signal output journal_digest_252;
     component input_n2b[(n \ 252)];
 
     for (var i = 0; i < (n \ 252); i++) {
@@ -31,28 +33,38 @@ template VerifyForGuest(n) {
             claim.journal_bytes_in[252 * (n \ 252) + j] <== input_last_n2b.out[j];
         }
     }
+    for (var i = 0; i < 256; i++) {
+        claim.pre_state_digest_bits[i] <== pre_state_digest_bits[i];
+    }
 
+    // log("out_0");
+    // log(stark_verifier.out[0]);
+    // log("out_1");
+    // log(stark_verifier.out[1]);
+    // log("out_2");
+    // log(stark_verifier.out[2]);
+    // log("out_3");
+    // log(stark_verifier.out[3]);
+    // log("codeRoot");
+    // log(stark_verifier.codeRoot);
+    // log("claim_out_0");
+    // log(claim.out[0]);
+    // log("claim_out_1");
+    // log(claim.out[1]);
 
-    log("out_0");
-    log(stark_verifier.out[0]);
-    log("out_1");
-    log(stark_verifier.out[1]);
-    log("out_2");
-    log(stark_verifier.out[2]);
-    log("out_3");
-    log(stark_verifier.out[3]);
-    log("codeRoot");
-    log(stark_verifier.codeRoot);
-    log("claim_out_0");
-    log(claim.out[0]);
-    log("claim_out_1");
-    log(claim.out[1]);
     stark_verifier.out[0] === 19350802088444617183621339156085479077;
     stark_verifier.out[1] === 61803236023146647725736150410140474743;
     stark_verifier.out[2] === claim.out[0];
     stark_verifier.out[3] === claim.out[1];
 
+    component journal_digest_b2n = Bits2Num(252);
+    for (var i = 0; i < 252; i++) {
+        journal_digest_b2n.in[i] <== claim.journal_digest_252[251 - i];
+    }
+    journal_digest_252 <== journal_digest_b2n.out;
+
     stark_verifier.codeRoot === 6655704183316983190945468237220041514376883004657559498672647785620383118673;
 }
+
 
 component main { public [ journal ] } = VerifyForGuest(2016);
