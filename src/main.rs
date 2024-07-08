@@ -80,7 +80,7 @@ pub fn stark_to_fflonk(identity_p254_seal_bytes: &[u8], journal: &[u8], pre_stat
         .arg("--rm")
         .arg("-v")
         .arg(&format!("{}:/mnt", work_dir.to_string_lossy()))
-        .arg("risc0-groth16-test-prover")
+        .arg("risc0-fflonk-prover")
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .output()
