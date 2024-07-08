@@ -18,24 +18,21 @@ RUN git clone https://github.com/iden3/circom.git && \
 ENV CC=clang
 ENV CXX=clang++
 
+WORKDIR /src/
+RUN git clone https://github.com/iden3/circomlib.git
+
+
 # Cache ahead of the larger build process
 FROM dependencies AS builder
 
 WORKDIR /src/
-COPY groth16/circuits/aliascheck.circom ./groth16/circuits/aliascheck.circom
-COPY groth16/circuits/binsum.circom ./groth16/circuits/binsum.circom
-COPY groth16/circuits/bitify.circom ./groth16/circuits/bitify.circom
-COPY groth16/circuits/comparators.circom ./groth16/circuits/comparators.circom
-COPY groth16/circuits/compconstant.circom ./groth16/circuits/compconstant.circom
-COPY groth16/circuits/risc0.circom ./groth16/circuits/risc0.circom
-COPY groth16/circuits/test_journal.circom ./groth16/circuits/test_journal.circom
-COPY groth16/circuits/test_stark_verify.circom ./groth16/circuits/test_stark_verify.circom
-COPY groth16/circuits/test_verify_for_guest.circom ./groth16/circuits/test_verify_for_guest.circom
-COPY groth16/circuits/sha256 ./groth16/circuits/sha256
-
+COPY circuits/risc0.circom ./proof/circuits/risc0.circom
+COPY circuits/test_journal.circom ./proof/circuits/test_journal.circom
+COPY circuits/test_stark_verify.circom ./proof/circuits/test_stark_verify.circom
+COPY circuits/test_verify_for_guest.circom ./proof/circuits/test_verify_for_guest.circom
 
 # Build the r1cs
-RUN (cd groth16/circuits; circom --r1cs test_verify_for_guest.circom)
+RUN (cd proof/circuits; circom --r1cs test_verify_for_guest.circom)
 
 # Create a final clean image with all the dependencies to run the ceremony
 FROM node AS test_ceremony
@@ -46,8 +43,9 @@ WORKDIR /test_ceremony
 RUN npm install -g snarkjs@0.7.4
 
 COPY scripts/test_run_ceremony.sh .
-COPY --from=builder /src/groth16/circuits/test_verify_for_guest.r1cs /test_ceremony/circuits/test_verify_for_guest.r1cs
+COPY groth16/pot19.ptau /test_ceremony/proof/groth16/pot19.ptau
+COPY --from=builder /src/proof/circuits/test_verify_for_guest.r1cs /test_ceremony/proof/circuits/test_verify_for_guest.r1cs
 RUN chmod +x test_run_ceremony.sh
 RUN ulimit -s unlimited
 
-ENTRYPOINT ["/test_ceremony/test_run_ceremony.sh", "/test_ceremony/circuits/test_verify_for_guest.r1cs", "/test_ceremony/groth16/pot19.ptau"]
+ENTRYPOINT ["/test_ceremony/test_run_ceremony.sh", "/test_ceremony/proof/circuits/test_verify_for_guest.r1cs", "/test_ceremony/proof/groth16/pot19.ptau"]

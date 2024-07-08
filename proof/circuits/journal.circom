@@ -16,17 +16,18 @@ template Journal(n) {
     // output_tag = 54240429074780157751094335427642025272505087342533963631932091736940340402644; // Constant = hash("risc0.Output")
 
     component journal_hasher = Sha256(n); // Depends on journal, hash(journal)
-    log("journal_bits");
-    for (var i = 0; i < n; i++) {
-        log(journal_bytes_in[i]);
-    }
+
+    // log("journal_bits");
+    // for (var i = 0; i < n; i++) {
+    //     log(journal_bytes_in[i]);
+    // }
     
     journal_hasher.in <== journal_bytes_in;
 
-    log("journal_digest");
-    for (var i = 0; i < 256; i++) {
-        log(journal_hasher.out[i]);
-    }
+    // log("journal_digest");
+    // for (var i = 0; i < 256; i++) {
+    //     log(journal_hasher.out[i]);
+    // }
     
     for (var i = 0; i < 256; i++) {
         output_hasher.in[i] <== output_tag_bytes[i];
@@ -93,10 +94,10 @@ template Journal(n) {
     claim_hasher.in[1358] <== 0;
     claim_hasher.in[1359] <== 0;
 
-    log("sha digest");
-    for (var i = 0; i < 256; i++) {
-        log(claim_hasher.out[i]);
-    }
+    // log("sha digest");
+    // for (var i = 0; i < 256; i++) {
+    //     log(claim_hasher.out[i]);
+    // }
 
     component b2n_1 = Bits2Num(128);
     for(var i = 0; i < 16; i++) {
@@ -114,7 +115,3 @@ template Journal(n) {
     }
     out[1] <== b2n_2.out;
 }
-
-/* INPUT = {
-    "in": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-} */

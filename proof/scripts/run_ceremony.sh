@@ -9,20 +9,20 @@ set -eoux
 #
 # It outputs everything to groth16
 
-# Make all the node commands actually have 32GB of room
+# Make all the node commands actually have 64GB of room
 export NODE_OPTIONS="--max-old-space-size=65536"
 
 # Do initial second stage ceremony setup
-(cd groth16; snarkjs g16s $1 $2 verify_for_guest_0000.zkey)
+(cd proof; snarkjs g16s $1 $2 verify_for_guest_0000.zkey)
 
 # Add a pretend contributon, in reality each person in the ceremony would do this
-(cd groth16; echo 'Entropy' | snarkjs zkey contribute verify_for_guest_0000.zkey verify_for_guest_0001.zkey --name="1st Contributor Name" -v)
+(cd proof; echo 'Entropy' | snarkjs zkey contribute verify_for_guest_0000.zkey verify_for_guest_0001.zkey --name="1st Contributor Name" -v)
 
 # Finalize
-(cd groth16; snarkjs zkey beacon verify_for_guest_0001.zkey verify_for_guest_final.zkey 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f 10 -n="Final Beacon phase2")
+(cd proof; snarkjs zkey beacon verify_for_guest_0001.zkey verify_for_guest_final.zkey 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f 10 -n="Final Beacon phase2")
 
 # Export verification key
-(cd groth16; snarkjs zkey export verificationkey verify_for_guest_final.zkey verify_for_guest_verification_key.json)
+(cd proof; snarkjs zkey export verificationkey verify_for_guest_final.zkey verify_for_guest_verification_key.json)
 
 # Export solidity smart contract
-(cd groth16; snarkjs zkey export solidityverifier verify_for_guest_final.zkey verifier.sol)
+(cd proof; snarkjs zkey export solidityverifier verify_for_guest_final.zkey verifier.sol)

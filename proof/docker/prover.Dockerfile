@@ -38,31 +38,23 @@ RUN git submodule init && \
   g++ -I. -I../src -I../depends/ffiasm/c -I../depends/json/single_include ../src/main_prover.cpp ../src/binfile_utils.cpp ../src/zkey_utils.cpp ../src/wtns_utils.cpp ../src/logger.cpp ../depends/ffiasm/c/misc.cpp ../depends/ffiasm/c/naf.cpp ../depends/ffiasm/c/splitparstr.cpp ../depends/ffiasm/c/alt_bn128.cpp fq.cpp fq.o fr.cpp fr.o -o prover -fmax-errors=5 -std=c++17 -pthread -lgmp -lsodium -O3 -fopenmp &&\
   cp ./prover /usr/local/sbin/rapidsnark
 
-# Cache ahead of the larger build process
-FROM dependencies AS builder
-
-WORKDIR /src/
-COPY groth16/circuits/aliascheck.circom ./groth16/circuits/aliascheck.circom
-COPY groth16/circuits/binsum.circom ./groth16/circuits/binsum.circom
-COPY groth16/circuits/bitify.circom ./groth16/circuits/bitify.circom
-COPY groth16/circuits/comparators.circom ./groth16/circuits/comparators.circom
-COPY groth16/circuits/compconstant.circom ./groth16/circuits/compconstant.circom
-COPY groth16/circuits/risc0.circom ./groth16/circuits/risc0.circom
-COPY groth16/circuits/journal.circom ./groth16/circuits/journal.circom
-COPY groth16/circuits/stark_verify.circom ./groth16/circuits/stark_verify.circom
-COPY groth16/circuits/verify_for_guest.circom ./groth16/circuits/verify_for_guest.circom
-COPY groth16/circuits/sha256 ./groth16/circuits/sha256
-
-# Build the witness generation
-RUN (cd groth16/circuits; circom --c --r1cs verify_for_guest.circom) && \
-  sed -i 's/g++/clang++/' groth16/circuits/verify_for_guest_cpp/Makefile && \
-  sed -i 's/O3/O0/' groth16/circuits/verify_for_guest_cpp/Makefile && \
-  (cd groth16/circuits/verify_for_guest_cpp; make)
-
-# Download the proving key
-# RUN (cd groth16; wget https://storage.googleapis.com/zkevm/ptau/powersOfTau28_hez_final_23.ptau)
-
-# RUN (cd groth16; snarkjs g16s verify_for_guest.r1cs pot23.ptau circuit.zkey)
+  WORKDIR /src/
+  RUN git clone https://github.com/iden3/circomlib.git
+  
+  # Cache ahead of the larger build process
+  FROM dependencies AS builder
+  
+  WORKDIR /src/
+  COPY circuits/risc0.circom ./proof/circuits/risc0.circom
+  COPY circuits/journal.circom ./proof/circuits/journal.circom
+  COPY circuits/stark_verify.circom ./proof/circuits/stark_verify.circom
+  COPY circuits/verify_for_guest.circom ./proof/circuits/verify_for_guest.circom
+  
+  # Build the witness generation
+  RUN (cd proof/circuits; circom --c --r1cs verify_for_guest.circom) && \
+    sed -i 's/g++/clang++/' proof/circuits/verify_for_guest_cpp/Makefile && \
+    sed -i 's/O3/O0/' proof/circuits/verify_for_guest_cpp/Makefile && \
+    (cd proof/circuits/verify_for_guest_cpp; make)
 
 # Create a final clean image with all the dependencies to perform stark->snark
 FROM ubuntu:jammy-20231211.1@sha256:bbf3d1baa208b7649d1d0264ef7d522e1dc0deeeaaf6085bf8e4618867f03494 AS prover
@@ -73,8 +65,8 @@ RUN apt update -qq && \
 
 COPY scripts/prover.sh /app/prover.sh
 COPY --from=builder /usr/local/sbin/rapidsnark /usr/local/sbin/rapidsnark
-COPY --from=builder /src/groth16/circuits/verify_for_guest_cpp/verify_for_guest /app/verify_for_guest
-COPY --from=builder /src/groth16/circuits/verify_for_guest_cpp/verify_for_guest.dat /app/verify_for_guest.dat
+COPY --from=builder /src/proof/circuits/verify_for_guest_cpp/verify_for_guest /app/verify_for_guest
+COPY --from=builder /src/proof/circuits/verify_for_guest_cpp/verify_for_guest.dat /app/verify_for_guest.dat
 COPY groth16/verify_for_guest_final.zkey /app/verify_for_guest_final.zkey
 
 WORKDIR /app
