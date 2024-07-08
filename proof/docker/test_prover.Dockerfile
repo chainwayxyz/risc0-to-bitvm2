@@ -41,7 +41,6 @@ RUN git submodule init && \
   WORKDIR /src/
   RUN git clone https://github.com/iden3/circomlib.git
   
-  
   # Cache ahead of the larger build process
   FROM dependencies AS builder
   

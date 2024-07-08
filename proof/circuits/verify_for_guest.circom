@@ -67,4 +67,4 @@ template VerifyForGuest(n) {
 }
 
 
-component main { public [ journal ] } = VerifyForGuest(1600);
+component main = VerifyForGuest(1600);

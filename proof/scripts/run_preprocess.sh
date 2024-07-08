@@ -6,10 +6,10 @@ set -eoux
 export NODE_OPTIONS="--max-old-space-size=65536"
 
 # Preprocess the keys
-(cd proof; snarkjs fflonk setup $1 $2 fflonk.zkey)
+(cd proof/fflonk; snarkjs fflonk setup $1 $2 fflonk.zkey)
 
 # Export verification key
-(cd proof; snarkjs zkey export verificationkey fflonk.zkey fflonk_verification_key.json)
+(cd proof/fflonk; snarkjs zkey export verificationkey fflonk.zkey fflonk_verification_key.json)
 
 # Export solidity smart contract
-(cd proof; snarkjs zkey export solidityverifier fflonk.zkey fflonk_verifier.sol)
+(cd proof/fflonk; snarkjs zkey export solidityverifier fflonk.zkey fflonk_verifier.sol)
