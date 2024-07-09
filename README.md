@@ -37,9 +37,13 @@ mkdir ./proof/fflonk
 ```
 
 ### Setup:
-To run the ceremony for `test-groth16` proof:
+
 ```
 cd proof
+```
+
+To run the ceremony for `test-groth16` proof:
+```
 docker build -f docker/test_ceremony.Dockerfile . -t test-snark-ceremony
 docker run --rm -v $(pwd)/groth16:/test_ceremony/proof/groth16 test-snark-ceremony
 ```
