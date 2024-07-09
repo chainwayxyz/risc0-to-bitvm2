@@ -11,13 +11,13 @@ cd risc0-to-fflonk
 
 To create the work directory:
 ```
-mkdir work_dir
+mkdir -p work_dir
 ```
 
 ### Download the setup parameters:
 For either `test-groth16` or `groth16` proof:
 ```
-mkdir ./proof/groth16
+mkdir -p ./proof/groth16
 ```
 
 For `test-groth16` proof:
@@ -32,7 +32,7 @@ For `groth16` proof:
 
 For `test-fflonk` proof:
 ```
-mkdir ./proof/fflonk
+mkdir -p ./proof/fflonk
  wget -O ./proof/fflonk/pot24.ptau https://storage.googleapis.com/zkevm/ptau/powersOfTau28_hez_final_24.ptau
 ```
 
