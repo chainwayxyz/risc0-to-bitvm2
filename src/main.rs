@@ -23,22 +23,25 @@ use tracing_subscriber::{fmt, EnvFilter};
 pub fn stark_to_fflonk(identity_p254_seal_bytes: &[u8], journal: &[u8], pre_state_bits: &[u8]) {
     let tmp_dir = tempdir().unwrap();
     let work_dir = std::env::var("RISC0_WORK_DIR");
+    let proof_type = std::env::var("PROOF_TYPE").unwrap_or("test-groth16".to_string());
     let work_dir = work_dir.as_ref().map(Path::new).unwrap_or(tmp_dir.path());
 
     std::fs::write(work_dir.join("seal.r0"), identity_p254_seal_bytes).unwrap();
     let seal_path = work_dir.join("input.json");
-    let proof_path = work_dir.join("proof.json");
+    let _proof_path = work_dir.join("proof.json");
     let mut seal_json = Vec::new();
-    // println!("Seal: {:?}", seal_json);
     to_json(identity_p254_seal_bytes, &mut seal_json).unwrap();
+    std::fs::write(seal_path.clone(), seal_json).unwrap();
     let journal_hex = hex::encode(journal);
     println!("Journal hex: {:?}", journal_hex);
+
     let mut journal_bits = Vec::new();
     for byte in journal {
         for i in 0..8 {
             journal_bits.push((byte >> (7 - i)) & 1);
         }
     }
+
     let q = journal_bits.len() / 252;
     let r = journal_bits.len() % 252;
     let mut journal_chunks: Vec<U256> = Vec::new();
@@ -55,6 +58,7 @@ pub fn stark_to_fflonk(identity_p254_seal_bytes: &[u8], journal: &[u8], pre_stat
         let file_content = fs::read_to_string(&seal_path).unwrap();
         serde_json::from_str(&file_content).unwrap()
     };
+
     // Now extend the seal json by adding journal
     let journal_str_vec = journal_chunks
         .iter()
@@ -65,24 +69,27 @@ pub fn stark_to_fflonk(identity_p254_seal_bytes: &[u8], journal: &[u8], pre_stat
     std::fs::write(seal_path, serde_json::to_string_pretty(&seal_json).unwrap()).unwrap();
 
     println!("Starting proving");
+    let docker_name = format!("risc0-{}-prover", proof_type);
 
     let output = Command::new("docker")
         .arg("run")
         .arg("--rm")
         .arg("-v")
         .arg(&format!("{}:/mnt", work_dir.to_string_lossy()))
-        .arg("risc0-groth16-prover")
+        .arg(docker_name)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .output()
         .unwrap();
     println!("Output: {:?}", output);
+    
     if !output.status.success() {
         eprintln!(
             "docker returned failure exit code: {:?}",
             output.status.code()
         );
     }
+
     // This part works for only Groth16 proofs
     // let contents = std::fs::read_to_string(proof_path).unwrap();
     // let proof_json: ProofJson = serde_json::from_str(&contents).unwrap();
@@ -91,25 +98,25 @@ pub fn stark_to_fflonk(identity_p254_seal_bytes: &[u8], journal: &[u8], pre_stat
 
 pub fn bits_to_num(len: usize, bits: &Vec<u8>) -> U256 {
     assert!(len <= 252);
-    assert!(bits.len() == len as usize);
+    assert!(bits.len() == len);
+
     let mut num_lo: u128 = 0;
+    let mut num_hi: u128 = 0;
+
+    for (i, &bit) in bits.iter().enumerate() {
+        if i < 128 {
+            num_lo |= (bit as u128) << i;
+        } else {
+            num_hi |= (bit as u128) << (i - 128);
+        }
+    }
+
+    let u256_lo = U256::from(num_lo);
     if len > 128 {
-        let mut num_hi: u128 = 0;
-        for i in 0..128 {
-            num_lo = num_lo + ((bits[i] as u128) << i);
-        }
-        for i in 128..len {
-            num_hi = num_hi + ((bits[i] as u128) << (i - 128));
-        }
-        let u256_lo = U256::from(num_lo);
         let u256_hi = U256::from(num_hi) << 128;
-        return u256_hi.wrapping_add(&u256_lo);
+        u256_hi.wrapping_add(&u256_lo)
     } else {
-        for i in 0..len {
-            num_lo = num_lo + ((bits[i] as u128) << i);
-        }
-        let num_lo: U256 = U256::from(num_lo);
-        num_lo
+        u256_lo
     }
 }
 
@@ -120,13 +127,13 @@ pub fn to_decimal(s: &str) -> Option<String> {
 
 fn main() {
     // initialize_logging();
-    let (receipt, (_last_block_hash, _pow), IMAGE_ID) = calculate_pow();
-    println!("IMAGE_ID: {:?}", IMAGE_ID);
+    let (receipt, (_last_block_hash, _pow), image_id) = calculate_pow();
+    println!("IMAGE_ID: {:?}", image_id);
     let mut pre_state_bits: Vec<u8> = Vec::new();
     for i in 0..8 {
         for j in 0..4 {
             for k in 0..8 {
-                pre_state_bits.push((IMAGE_ID[i] >> (8 * j + 7 - k)) as u8 & 1);
+                pre_state_bits.push((image_id[i] >> (8 * j + 7 - k)) as u8 & 1);
             }
         }
     }
