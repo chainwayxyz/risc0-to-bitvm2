@@ -30,10 +30,10 @@ For `groth16` proof:
  wget -O ./proof/groth16/pot23.ptau https://storage.googleapis.com/zkevm/ptau/powersOfTau28_hez_final_23.ptau
 ```
 
-For `fflonk` proof:
+For `test-fflonk` proof:
 ```
 mkdir ./proof/fflonk
- wget -O ./proof/groth16/pot24.ptau https://storage.googleapis.com/zkevm/ptau/powersOfTau28_hez_final_24.ptau
+ wget -O ./proof/fflonk/pot24.ptau https://storage.googleapis.com/zkevm/ptau/powersOfTau28_hez_final_24.ptau
 ```
 
 ### Setup:
@@ -51,15 +51,15 @@ docker build -f docker/test_prover.Dockerfile . -t risc0-test-groth16-prover
 
 For `groth16` proof, use the same commands without `test` prefix.
 
-To run the preprocessing for `fflonk` proof:
+To run the preprocessing for `test-fflonk` proof:
 ```
-docker build -f docker/fflonk_pp.Dockerfile . -t fflonk-preprocess
-docker run --rm -v $(pwd)/fflonk:/test_preprocess/proof/fflonk fflonk-preprocess
+docker build -f docker/fflonk_pp.Dockerfile . -t test-fflonk-preprocess
+docker run --rm -v $(pwd)/fflonk:/test_preprocess/proof/fflonk test-fflonk-preprocess
 ```
 
 To build the prover:
 ```
-docker build -f docker/fflonk_prover.Dockerfile . -t risc0-fflonk-prover
+docker build -f docker/test_fflonk_prover.Dockerfile . -t risc0-test-fflonk-prover
 ```
 
 ### Execution:

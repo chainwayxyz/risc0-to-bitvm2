@@ -45,13 +45,13 @@ RUN apt update -qq && \
   apt install -y libsodium23 nodejs npm && \
   npm install -g snarkjs@0.7.3
 
-COPY scripts/fflonk_prover.sh /app/fflonk_prover.sh
+COPY scripts/test_fflonk_prover.sh /app/test_fflonk_prover.sh
 COPY --from=builder /src/proof/circuits/test_verify_for_guest_cpp/test_verify_for_guest /app/test_verify_for_guest
 COPY --from=builder /src/proof/circuits/test_verify_for_guest_cpp/test_verify_for_guest.dat /app/test_verify_for_guest.dat
-COPY fflonk/fflonk.zkey /app/fflonk.zkey
+COPY fflonk/test_fflonk.zkey /app/test_fflonk.zkey
 
 WORKDIR /app
-RUN chmod +x fflonk_prover.sh
+RUN chmod +x test_fflonk_prover.sh
 RUN ulimit -s unlimited
 
-ENTRYPOINT ["/app/fflonk_prover.sh"]
+ENTRYPOINT ["/app/test_fflonk_prover.sh"]

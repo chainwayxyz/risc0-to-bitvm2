@@ -16,4 +16,7 @@ proof/groth16/test_verifier.sol
 proof/fflonk/pot24.ptau
 proof/fflonk/fflonk_verification_key.json
 proof/fflonk/fflonk.zkey
-proof/fflonk/fflonk_verifier.sol
+proof/fflonk/test_fflonk_verifier.sol
+proof/fflonk/test_fflonk_verification_key.json
+proof/fflonk/test_fflonk.zkey
+proof/fflonk/test_fflonk_verifier.sol

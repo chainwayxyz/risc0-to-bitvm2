@@ -142,9 +142,9 @@ fn main() {
     let prover = get_prover_server(&ProverOpts::default()).unwrap();
     let succinct_receipt = prover.composite_to_succinct(composite_receipt).unwrap();
     println!("Succinct receipt claim: {:?}", receipt.inner.claim());
-    let groth16_proof = prover.succinct_to_groth16(&succinct_receipt).unwrap();
-    let res = groth16_proof.verify_integrity_with_context(&VerifierContext::default());
-    println!("Verification result: {:?}", res);
+    // let groth16_proof = prover.succinct_to_groth16(&succinct_receipt).unwrap();
+    // let res = groth16_proof.verify_integrity_with_context(&VerifierContext::default());
+    // println!("Verification result: {:?}", res);
     let ident_receipt = prover.identity_p254(&succinct_receipt).unwrap();
     println!(
         "Identity receipt control_id: {:?}",
