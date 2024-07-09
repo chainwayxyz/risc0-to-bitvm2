@@ -1,3 +1,22 @@
 /target
 
 /work_dir
+proof/groth16/pot23.ptau
+proof/groth16/pot19.ptau
+proof/groth16/verify_for_guest_0000.zkey
+proof/groth16/verify_for_guest_0001.zkey
+proof/groth16/verify_for_guest_final.zkey
+proof/groth16/verify_for_guest_verification_key.json
+proof/groth16/verifier.sol
+proof/groth16/test_verify_for_guest_0000.zkey
+proof/groth16/test_verify_for_guest_0001.zkey
+proof/groth16/test_verify_for_guest_final.zkey
+proof/groth16/test_verify_for_guest_verification_key.json
+proof/groth16/test_verifier.sol
+proof/fflonk/pot24.ptau
+proof/fflonk/fflonk_verification_key.json
+proof/fflonk/fflonk.zkey
+proof/fflonk/test_fflonk_verifier.sol
+proof/fflonk/test_fflonk_verification_key.json
+proof/fflonk/test_fflonk.zkey
+proof/fflonk/test_fflonk_verifier.sol

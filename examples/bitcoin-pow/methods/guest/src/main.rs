@@ -114,7 +114,42 @@ fn main() {
             &curr_nonce.to_le_bytes()
         );
     }
+    let mut dummy_groth16_proof: [[u8; 33]; 4] = [[0u8; 33]; 4];
+    for i in 0..4 {
+        for j in 0..33 {
+            dummy_groth16_proof[i][j] = env::read();
+        }
+    }
+    let dummy_challenge_period: u32 = env::read();
+    let curr = env::cycle_count();
+    tracing::info!("Cycle count: {}", curr);
+    let mut dummy_groth16_proof_bytes: [u8; 132] = [0u8; 132];
+    for i in 0..4 {
+        for j in 0..33 {
+            let idx = 33 * i + j;
+            dummy_groth16_proof_bytes[idx] = dummy_groth16_proof[i][j];
+        }
+    }
+    let mut env_dummy_groth16_proof = [0u32; 33];
+    for i in 0..33 {
+        env_dummy_groth16_proof[i] = (dummy_groth16_proof_bytes[4 * i] as u32) + ((dummy_groth16_proof_bytes[4 * i + 1] as u32) << 8) + ((dummy_groth16_proof_bytes[4 * i + 2] as u32) << 16) + ((dummy_groth16_proof_bytes[4 * i + 3] as u32) << 24);
+    }
+    let mut env_curr_prev_block_hash: [u32; 8] = [0u32; 8];
+    for i in 0..8 {
+        env_curr_prev_block_hash[i] = (curr_prev_block_hash[4 * i] as u32) + ((curr_prev_block_hash[4 * i + 1] as u32) << 8) + ((curr_prev_block_hash[4 * i + 2] as u32) << 16) + ((curr_prev_block_hash[4 * i + 3] as u32) << 24);
+    }
+    let mut env_total_work: [u32; 8] = [0u32; 8];
+    let total_work_bytes: [u8; 32] = total_work.to_be_bytes();
+    for i in 0..8 {
+        env_total_work[i] = (total_work_bytes[4 * i] as u32) + ((total_work_bytes[4 * i + 1] as u32) << 8) + ((total_work_bytes[4 * i + 2] as u32) << 16) + ((total_work_bytes[4 * i + 3] as u32) << 24);
+    }
+    let mut env_groth16_proof_32_bytes = [0u32; 32];
+    env_groth16_proof_32_bytes.copy_from_slice(&env_dummy_groth16_proof[0..32]);
+    let env_groth16_proof_last = env_dummy_groth16_proof[32];
     // Outputs:
-    env::commit(&curr_prev_block_hash);
-    env::commit(&total_work.to_be_bytes());
+    env::commit(&env_groth16_proof_32_bytes);
+    env::commit(&env_groth16_proof_last);
+    env::commit(&env_total_work);
+    env::commit(&env_curr_prev_block_hash);
+    env::commit(&dummy_challenge_period);
 }

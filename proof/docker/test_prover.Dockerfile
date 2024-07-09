@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.7
+# syntax=docker/dockerfile:1.4
 FROM rust:1.74.0 AS dependencies
 
 WORKDIR /src/
@@ -38,23 +38,23 @@ RUN git submodule init && \
   g++ -I. -I../src -I../depends/ffiasm/c -I../depends/json/single_include ../src/main_prover.cpp ../src/binfile_utils.cpp ../src/zkey_utils.cpp ../src/wtns_utils.cpp ../src/logger.cpp ../depends/ffiasm/c/misc.cpp ../depends/ffiasm/c/naf.cpp ../depends/ffiasm/c/splitparstr.cpp ../depends/ffiasm/c/alt_bn128.cpp fq.cpp fq.o fr.cpp fr.o -o prover -fmax-errors=5 -std=c++17 -pthread -lgmp -lsodium -O3 -fopenmp &&\
   cp ./prover /usr/local/sbin/rapidsnark
 
-# Cache ahead of the larger build process
-FROM dependencies AS builder
-
-WORKDIR /src/
-COPY groth16/risc0.circom ./groth16/risc0.circom
-COPY groth16/stark_verify.circom ./groth16/stark_verify.circom
-COPY groth16/verify_for_guest.circom ./groth16/verify_for_guest.circom
-
-# Build the witness generation
-RUN (cd groth16; circom --c verify_for_guest.circom) && \
-  sed -i 's/g++/clang++/' groth16/verify_for_guest_cpp/Makefile && \
-  sed -i 's/O3/O0/' groth16/verify_for_guest_cpp/Makefile && \
-  (cd groth16/verify_for_guest_cpp; make)
-
-# Download the proving key
-RUN wget https://risc0-artifacts.s3.us-west-2.amazonaws.com/zkey/2024-05-17.1/stark_verify_final.zkey.gz -O groth16/verify_for_guest_final.zkey.gz && \
-  (cd groth16; gzip -df verify_for_guest_final.zkey.gz)
+  WORKDIR /src/
+  RUN git clone https://github.com/iden3/circomlib.git
+  
+  # Cache ahead of the larger build process
+  FROM dependencies AS builder
+  
+  WORKDIR /src/
+  COPY circuits/risc0.circom ./proof/circuits/risc0.circom
+  COPY circuits/test_journal.circom ./proof/circuits/test_journal.circom
+  COPY circuits/test_stark_verify.circom ./proof/circuits/test_stark_verify.circom
+  COPY circuits/test_verify_for_guest.circom ./proof/circuits/test_verify_for_guest.circom
+  
+  # Build the witness generation
+  RUN (cd proof/circuits; circom --c --r1cs test_verify_for_guest.circom) && \
+    sed -i 's/g++/clang++/' proof/circuits/test_verify_for_guest_cpp/Makefile && \
+    sed -i 's/O3/O0/' proof/circuits/test_verify_for_guest_cpp/Makefile && \
+    (cd proof/circuits/test_verify_for_guest_cpp; make)
 
 # Create a final clean image with all the dependencies to perform stark->snark
 FROM ubuntu:jammy-20231211.1@sha256:bbf3d1baa208b7649d1d0264ef7d522e1dc0deeeaaf6085bf8e4618867f03494 AS prover
@@ -63,14 +63,14 @@ RUN apt update -qq && \
   apt install -y libsodium23 nodejs npm && \
   npm install -g snarkjs@0.7.3
 
-COPY scripts/prover.sh /app/prover.sh
+COPY scripts/test_prover.sh /app/test_prover.sh
 COPY --from=builder /usr/local/sbin/rapidsnark /usr/local/sbin/rapidsnark
-COPY --from=builder /src/groth16/verify_for_guest_cpp/verify_for_guest /app/verify_for_guest
-COPY --from=builder /src/groth16/verify_for_guest_cpp/verify_for_guest.dat /app/verify_for_guest.dat
-COPY --from=builder /src/groth16/verify_for_guest_final.zkey /app/verify_for_guest_final.zkey
+COPY --from=builder /src/proof/circuits/test_verify_for_guest_cpp/test_verify_for_guest /app/test_verify_for_guest
+COPY --from=builder /src/proof/circuits/test_verify_for_guest_cpp/test_verify_for_guest.dat /app/test_verify_for_guest.dat
+COPY groth16/test_verify_for_guest_final.zkey /app/test_verify_for_guest_final.zkey
 
 WORKDIR /app
-RUN chmod +x prover.sh
+RUN chmod +x test_prover.sh
 RUN ulimit -s unlimited
 
-ENTRYPOINT ["/app/prover.sh"]
+ENTRYPOINT ["/app/test_prover.sh"]
