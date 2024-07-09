@@ -43,7 +43,7 @@ WORKDIR /test_preprocess
 # install snarkjs globally
 RUN npm install -g snarkjs@0.7.4
 
-COPY scripts/run_preprocess.sh .
+COPY scripts/test_run_preprocess.sh .
 COPY fflonk/pot24.ptau /test_preprocess/proof/fflonk/pot24.ptau
 COPY --from=builder /src/proof/circuits/test_verify_for_guest.r1cs /test_preprocess/proof/circuits/test_verify_for_guest.r1cs
 RUN chmod +x test_run_preprocess.sh
