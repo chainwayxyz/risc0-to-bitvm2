@@ -57,7 +57,7 @@ For `groth16` proof, use the same commands without `test` prefix.
 
 To run the preprocessing for `test-fflonk` proof:
 ```
-docker build -f docker/fflonk_pp.Dockerfile . -t test-fflonk-preprocess
+docker build -f docker/test_fflonk_pp.Dockerfile . -t test-fflonk-preprocess
 docker run --rm -v $(pwd)/fflonk:/test_preprocess/proof/fflonk test-fflonk-preprocess
 ```
 
