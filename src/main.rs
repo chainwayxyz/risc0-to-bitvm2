@@ -11,7 +11,10 @@ use num_bigint::BigUint;
 use num_traits::Num;
 use risc0_groth16::to_json;
 // use risc0_groth16::ProofJson;
-use risc0_zkvm::{default_executor, default_prover, get_prover_server, ExecutorEnv, ProverOpts, VerifierContext, Journal};
+use risc0_zkvm::{
+    default_executor, default_prover, get_prover_server, ExecutorEnv, Journal, ProverOpts,
+    VerifierContext,
+};
 use serde_json::Value;
 use std::env;
 use std::str::FromStr;
@@ -83,7 +86,7 @@ pub fn stark_to_succinct(identity_p254_seal_bytes: &[u8], journal: &[u8], pre_st
         .output()
         .unwrap();
     println!("Output: {:?}", output);
-    
+
     if !output.status.success() {
         eprintln!(
             "docker returned failure exit code: {:?}",
@@ -127,9 +130,9 @@ pub fn to_decimal(s: &str) -> Option<String> {
 }
 
 fn main() {
-    // initialize_logging();
+    initialize_logging();
     // No need to include journal and the METHOD_ID, they are included in the receipt.
-    let (pow_receipt, (pow, last_block_hash), image_id) = calculate_pow();
+    let (pow_receipt, pow_journal, image_id) = calculate_pow();
 
     // println!("IMAGE_ID: {:?}", image_id);
     // let mut pre_state_bits: Vec<u8> = Vec::new();
@@ -158,21 +161,17 @@ fn main() {
     // let _succinct_proof = stark_to_succinct(&identity_p254_seal_bytes, &journal_bytes, &pre_state_bits);
     // let groth16_proof = stark_to_snark(&identity_p254_seal_bytes).unwrap();
 
-    let (verify_stark_receipt, blake3_digest) = verify_stark(pow_receipt, pow, last_block_hash, image_id);
+    let (verify_stark_receipt, blake3_digest) = verify_stark(pow_receipt, pow_journal, image_id);
     println!("Verification receipt: {:?}", verify_stark_receipt);
     println!("Blake3 digest: {:?}", blake3_digest);
-
-
 }
 
 pub fn initialize_logging() {
     tracing_subscriber::registry()
         .with(fmt::layer())
         .with(
-            EnvFilter::from_str(
-                &env::var("RUST_LOG").unwrap_or_else(|_| "debug".to_string()),
-            )
-            .unwrap(),
+            EnvFilter::from_str(&env::var("RUST_LOG").unwrap_or_else(|_| "debug".to_string()))
+                .unwrap(),
         )
         .init();
 }
