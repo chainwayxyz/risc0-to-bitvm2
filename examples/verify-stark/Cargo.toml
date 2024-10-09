@@ -1,11 +1,11 @@
 [package]
-name = "bitcoin-pow"
+name = "verify-stark"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-bitcoin = { version = "0.31.1", features = ["bitcoinconsensus"] }
-bitcoin-pow-methods = { path = "methods" }
+verify-methods = { path = "methods" }
+bitcoin-pow-methods = { path = "../bitcoin-pow/methods" }
 hex = "0.4.3"
 risc0-zkvm = "1.1.2"
 serde = "1.0"

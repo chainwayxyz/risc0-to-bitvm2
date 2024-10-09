@@ -2,7 +2,8 @@
 resolver = "2"
 members = [
   "hello-world",
-  "bitcoin-pow"
+  "bitcoin-pow",
+  "verify-stark"
 ]
 
 # Always optimize; otherwise tests take excessively long.

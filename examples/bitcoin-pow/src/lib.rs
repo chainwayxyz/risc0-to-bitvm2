@@ -3,6 +3,7 @@
 use bitcoin::{block::Header, consensus::deserialize, secp256k1};
 pub use bitcoin_pow_methods::CALCULATE_POW_ELF;
 pub use bitcoin_pow_methods::CALCULATE_POW_ID;
+use risc0_zkvm::Journal;
 use risc0_zkvm::{default_prover, ExecutorEnv, Receipt};
 use secp256k1::hashes::Hash;
 
@@ -59,14 +60,21 @@ pub fn calculate_pow() -> (Receipt, ([u32; 8], [u32; 8]), [u32; 8]) {
     // Produce a receipt by proving the specified ELF binary.
     let receipt = prover.prove(env, CALCULATE_POW_ELF).unwrap().receipt;
 
+    let journal = receipt.journal.clone();
+    // let journal_vec= journal.bytes.clone();
+
     // Extract journal of receipt (i.e. output c, where c = a * b)
-    let (dummy_groth16_proof_32, dummy_groth16_proof_last, pow, last_block_hash, challenge_period): ([u32; 32], u32, [u32; 8], [u32; 8], u32) = receipt.journal.decode().expect(
+    // let (dummy_groth16_proof_32, dummy_groth16_proof_last, pow, last_block_hash, challenge_period): ([u32; 32], u32, [u32; 8], [u32; 8], u32) = receipt.journal.decode().expect(
+    //     "Journal output should deserialize into the same types (& order) that it was written",
+    // );
+
+    let (pow, last_block_hash): ([u32; 8], [u32; 8]) = receipt.journal.decode().expect(
         "Journal output should deserialize into the same types (& order) that it was written",
     );
 
-    let last_block_header_str: &str = "01000000e915d9a478e3adf3186c07c61a22228b10fd87df343c92782ecc052c000000006e06373c80de397406dc3d19c90d71d230058d28293614ea58d6a57f8f5d32f8b8ce6649ffff001d173807f8";
-    let last_block_header: Header =
-        deserialize(&hex::decode(last_block_header_str).unwrap()).unwrap();
+    // let last_block_header_str: &str = "01000000e915d9a478e3adf3186c07c61a22228b10fd87df343c92782ecc052c000000006e06373c80de397406dc3d19c90d71d230058d28293614ea58d6a57f8f5d32f8b8ce6649ffff001d173807f8";
+    // let last_block_header: Header =
+    //     deserialize(&hex::decode(last_block_header_str).unwrap()).unwrap();
     // println!("{:?}", last_block_header.block_hash().to_byte_array());
     // assert_eq!(
     //     last_block_header.block_hash().to_byte_array(),
@@ -75,6 +83,6 @@ pub fn calculate_pow() -> (Receipt, ([u32; 8], [u32; 8]), [u32; 8]) {
 
     // Report the product
     // println!("PoW up until block: {:?} is {:?}", last_block_hash, pow);
-    (receipt, (last_block_hash, pow), CALCULATE_POW_ID)
+    (receipt, (pow, last_block_hash), CALCULATE_POW_ID)
 }
 

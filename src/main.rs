@@ -11,7 +11,7 @@ use num_bigint::BigUint;
 use num_traits::Num;
 use risc0_groth16::to_json;
 // use risc0_groth16::ProofJson;
-use risc0_zkvm::{get_prover_server, ProverOpts, VerifierContext};
+use risc0_zkvm::{default_executor, default_prover, get_prover_server, ExecutorEnv, ProverOpts, VerifierContext, Journal};
 use serde_json::Value;
 use std::env;
 use std::str::FromStr;
@@ -19,8 +19,9 @@ use tempfile::tempdir;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{fmt, EnvFilter};
+use verify_stark::verify_stark;
 
-pub fn stark_to_fflonk(identity_p254_seal_bytes: &[u8], journal: &[u8], pre_state_bits: &[u8]) {
+pub fn stark_to_succinct(identity_p254_seal_bytes: &[u8], journal: &[u8], pre_state_bits: &[u8]) {
     let tmp_dir = tempdir().unwrap();
     let work_dir = std::env::var("RISC0_WORK_DIR");
     let proof_type = std::env::var("PROOF_TYPE").unwrap_or("test-groth16".to_string());
@@ -127,33 +128,41 @@ pub fn to_decimal(s: &str) -> Option<String> {
 
 fn main() {
     // initialize_logging();
-    let (receipt, (_last_block_hash, _pow), image_id) = calculate_pow();
-    println!("IMAGE_ID: {:?}", image_id);
-    let mut pre_state_bits: Vec<u8> = Vec::new();
-    for i in 0..8 {
-        for j in 0..4 {
-            for k in 0..8 {
-                pre_state_bits.push((image_id[i] >> (8 * j + 7 - k)) as u8 & 1);
-            }
-        }
-    }
-    let journal_bytes = receipt.journal.bytes;
-    let composite_receipt = receipt.inner.composite().unwrap();
-    let prover = get_prover_server(&ProverOpts::default()).unwrap();
-    let succinct_receipt = prover.composite_to_succinct(composite_receipt).unwrap();
-    println!("Succinct receipt claim: {:?}", receipt.inner.claim());
+    // No need to include journal and the METHOD_ID, they are included in the receipt.
+    let (pow_receipt, (pow, last_block_hash), image_id) = calculate_pow();
+
+    // println!("IMAGE_ID: {:?}", image_id);
+    // let mut pre_state_bits: Vec<u8> = Vec::new();
+    // for i in 0..8 {
+    //     for j in 0..4 {
+    //         for k in 0..8 {
+    //             pre_state_bits.push((image_id[i] >> (8 * j + 7 - k)) as u8 & 1);
+    //         }
+    //     }
+    // }
+    // let journal_bytes = receipt.journal.bytes;
+    // let composite_receipt = receipt.inner.composite().unwrap();
+    // let prover = get_prover_server(&ProverOpts::default()).unwrap();
+    // let succinct_receipt = prover.composite_to_succinct(composite_receipt).unwrap();
+    // println!("Succinct receipt claim: {:?}", receipt.inner.claim());
     // let groth16_proof = prover.succinct_to_groth16(&succinct_receipt).unwrap();
     // let res = groth16_proof.verify_integrity_with_context(&VerifierContext::default());
     // println!("Verification result: {:?}", res);
-    let ident_receipt = prover.identity_p254(&succinct_receipt).unwrap();
-    println!(
-        "Identity receipt control_id: {:?}",
-        ident_receipt.control_id
-    );
+    // let ident_receipt = prover.identity_p254(&succinct_receipt).unwrap();
+    // println!(
+    //     "Identity receipt control_id: {:?}",
+    //     ident_receipt.control_id
+    // );
 
-    let identity_p254_seal_bytes = ident_receipt.get_seal_bytes();
-    let _fflonk_proof = stark_to_fflonk(&identity_p254_seal_bytes, &journal_bytes, &pre_state_bits);
+    // let identity_p254_seal_bytes = ident_receipt.get_seal_bytes();
+    // let _succinct_proof = stark_to_succinct(&identity_p254_seal_bytes, &journal_bytes, &pre_state_bits);
     // let groth16_proof = stark_to_snark(&identity_p254_seal_bytes).unwrap();
+
+    let (verify_stark_receipt, blake3_digest) = verify_stark(pow_receipt, pow, last_block_hash, image_id);
+    println!("Verification receipt: {:?}", verify_stark_receipt);
+    println!("Blake3 digest: {:?}", blake3_digest);
+
+
 }
 
 pub fn initialize_logging() {
