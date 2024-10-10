@@ -1,16 +1,17 @@
 #![doc = include_str!("../README.md")]
 
-use bitcoin_pow_methods::CALCULATE_POW_ID;
-use risc0_zkvm::{default_prover, guest::env, ExecutorEnv, Journal, Receipt};
+use risc0_zkvm::ProverOpts;
+use risc0_zkvm::{default_prover, ExecutorEnv, Journal, Receipt};
 pub use verify_methods::VERIFY_ELF;
 pub use verify_methods::VERIFY_ID;
 
 pub fn verify_stark(
     stark_receipt: Receipt,
     stark_journal: Journal,
-    method_id: [u32; 8],
-) -> (Receipt, [u8; 32]) {
-    //TODO: Pass journal directly to bypass serialization problems
+    assumption_method_id: [u32; 8],
+) -> (Receipt, [u8; 32], [u32; 8]) {
+    // Hard-code the general purpose circuit ID for the verify_stark method so that VERIFY_ID has its commitment.
+    // Will have to change it from circuit to circuit.
 
     println!("stark receipt: {:?}", stark_receipt);
     println!("stark journal: {:?}", stark_receipt.journal.bytes);
@@ -25,10 +26,16 @@ pub fn verify_stark(
         .build()
         .unwrap();
 
-    let verify_receipt = default_prover().prove(env, VERIFY_ELF).unwrap().receipt;
+    let prover = default_prover();
+    let prover_opts = ProverOpts::succinct();
+    let verify_receipt = prover.prove_with_opts(env, VERIFY_ELF, &prover_opts).unwrap().receipt;
 
-    let blake3_digest: [u8; 32] = verify_receipt.journal.decode().unwrap();
+    let blake3_digest_u32x8: [u32; 8] = verify_receipt.journal.decode().unwrap();
+    let mut blake3_digest = [0u8; 32];
+    for i in 0..8 {
+        blake3_digest[i * 4..(i + 1) * 4].copy_from_slice(&blake3_digest_u32x8[i].to_le_bytes());
+    }
 
     verify_receipt.verify(VERIFY_ID).unwrap();
-    return (verify_receipt, blake3_digest);
+    return (verify_receipt, blake3_digest, VERIFY_ID);
 }

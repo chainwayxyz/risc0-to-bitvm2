@@ -49,6 +49,9 @@ RUN git submodule init && \
   COPY circuits/test_journal.circom ./proof/circuits/test_journal.circom
   COPY circuits/test_stark_verify.circom ./proof/circuits/test_stark_verify.circom
   COPY circuits/test_verify_for_guest.circom ./proof/circuits/test_verify_for_guest.circom
+  COPY circuits/blake3.circom ./proof/circuits/blake3.circom
+  COPY circuits/blake3_common.circom ./proof/circuits/blake3_common.circom
+  COPY circuits/blake3_compression.circom ./proof/circuits/blake3_compression.circom
   
   # Build the witness generation
   RUN (cd proof/circuits; circom --c --r1cs test_verify_for_guest.circom) && \
