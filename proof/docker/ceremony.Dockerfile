@@ -29,7 +29,9 @@ COPY circuits/risc0.circom ./proof/circuits/risc0.circom
 COPY circuits/journal.circom ./proof/circuits/journal.circom
 COPY circuits/stark_verify.circom ./proof/circuits/stark_verify.circom
 COPY circuits/verify_for_guest.circom ./proof/circuits/verify_for_guest.circom
-
+COPY circuits/blake3.circom ./proof/circuits/blake3.circom
+COPY circuits/blake3_common.circom ./proof/circuits/blake3_common.circom
+COPY circuits/blake3_compression.circom ./proof/circuits/blake3_compression.circom
 
 # Build the r1cs
 RUN (cd proof/circuits; circom --r1cs verify_for_guest.circom)

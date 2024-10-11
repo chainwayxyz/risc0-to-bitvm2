@@ -147,9 +147,9 @@ fn main() {
     env_groth16_proof_32_bytes.copy_from_slice(&env_dummy_groth16_proof[0..32]);
     let env_groth16_proof_last = env_dummy_groth16_proof[32];
     // Outputs:
-    env::commit(&env_groth16_proof_32_bytes);
-    env::commit(&env_groth16_proof_last);
+    // env::commit(&env_groth16_proof_32_bytes);
+    // env::commit(&env_groth16_proof_last);
     env::commit(&env_total_work);
     env::commit(&env_curr_prev_block_hash);
-    env::commit(&dummy_challenge_period);
+    // env::commit(&dummy_challenge_period);
 }
