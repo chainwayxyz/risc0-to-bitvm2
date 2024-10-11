@@ -12,8 +12,8 @@ use num_traits::Num;
 use risc0_groth16::to_json;
 // use risc0_groth16::ProofJson;
 use risc0_zkvm::{
-    default_executor, default_prover, get_prover_server, ExecutorEnv,
-    Groth16ReceiptVerifierParameters, Journal, ProverOpts, VerifierContext,
+    get_prover_server,
+    Groth16ReceiptVerifierParameters, ProverOpts, ReceiptClaim, SuccinctReceipt,
 };
 use serde_json::Value;
 use std::env;
@@ -25,15 +25,15 @@ use tracing_subscriber::{fmt, EnvFilter};
 use verify_stark::verify_stark;
 
 pub fn stark_to_succinct(
-    identity_p254_seal_bytes: &[u8],
+    ident_receipt: SuccinctReceipt<ReceiptClaim>,
     journal: &[u8],
     verify_stark_method_id: &[u32; 8],
 ) {
     let mut pre_state_bits: Vec<u8> = Vec::new();
-    for i in 0..8 {
+    for item in verify_stark_method_id.iter().take(8) {
         for j in 0..4 {
             for k in 0..8 {
-                pre_state_bits.push((verify_stark_method_id[i] >> (8 * j + 7 - k)) as u8 & 1);
+                pre_state_bits.push((item >> (8 * j + 7 - k)) as u8 & 1);
             }
         }
     }
@@ -41,12 +41,16 @@ pub fn stark_to_succinct(
     let work_dir = std::env::var("RISC0_WORK_DIR");
     let proof_type = std::env::var("PROOF_TYPE").unwrap_or("test-groth16".to_string());
     let work_dir = work_dir.as_ref().map(Path::new).unwrap_or(tmp_dir.path());
-
-    std::fs::write(work_dir.join("seal.r0"), identity_p254_seal_bytes).unwrap();
+    let identity_p254_seal_bytes = ident_receipt.get_seal_bytes();
+    std::fs::write(
+        work_dir.join("seal.r0"),
+        identity_p254_seal_bytes.as_slice(),
+    )
+    .unwrap();
     let seal_path = work_dir.join("input.json");
     let _proof_path = work_dir.join("proof.json");
     let mut seal_json = Vec::new();
-    to_json(identity_p254_seal_bytes, &mut seal_json).unwrap();
+    to_json(identity_p254_seal_bytes.as_slice(), &mut seal_json).unwrap();
     std::fs::write(seal_path.clone(), seal_json).unwrap();
     let journal_hex = hex::encode(journal);
     println!("Journal hex: {:?}", journal_hex);
@@ -60,14 +64,15 @@ pub fn stark_to_succinct(
 
     let groth16_verifier_params = Groth16ReceiptVerifierParameters::default();
     let control_root = groth16_verifier_params.control_root;
-    let id_bn254_fr = groth16_verifier_params.bn254_control_id;
+    // let id_bn254_fr = groth16_verifier_params.bn254_control_id;
 
     let control_root_bits = control_root
         .as_bytes()
         .iter()
         .flat_map(|&byte| (0..8).rev().map(move |i| (byte >> i) & 1));
 
-    let id_bn254_fr_bits = id_bn254_fr
+    let id_bn254_fr_bits = ident_receipt
+        .control_id
         .as_bytes()
         .iter()
         .flat_map(|&byte| (0..8).rev().map(move |i| (byte >> i) & 1));
@@ -112,7 +117,7 @@ pub fn stark_to_succinct(
         .map(|s| s.to_string())
         .collect::<Vec<String>>();
 
-    seal_json["journal_blake3_digest"] = journal_bits_str_vec.into();
+    seal_json["journal_blake3_digest_bits"] = journal_bits_str_vec.into();
     seal_json["pre_state_digest_bits"] = pre_state_bits_str_vec.into();
     seal_json["control_root_bits"] = control_root_bits_str_vec.into();
     seal_json["id_bn254_fr_bits"] = id_bn254_fr_bits_str_vec.into();
@@ -125,7 +130,7 @@ pub fn stark_to_succinct(
         .arg("run")
         .arg("--rm")
         .arg("-v")
-        .arg(&format!("{}:/mnt", work_dir.to_string_lossy()))
+        .arg(format!("{}:/mnt", work_dir.to_string_lossy()))
         .arg(docker_name)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -146,7 +151,7 @@ pub fn stark_to_succinct(
     // println!("proof: {:?}", proof_json);
 }
 
-pub fn bits_to_num(len: usize, bits: &Vec<u8>) -> U256 {
+pub fn bits_to_num(len: usize, bits: &[u8]) -> U256 {
     assert!(len <= 252);
     assert!(bits.len() == len);
 
@@ -179,7 +184,7 @@ fn main() {
     initialize_logging();
     // No need to include journal and the METHOD_ID, they are included in the receipt.
     // pow_receipt is the SuccinctReceipt of the PoW.
-    let (pow_receipt, pow_journal, pow_image_id) = calculate_pow();
+    let (pow_receipt, pow_journal, _pow_image_id) = calculate_pow();
 
     // println!("IMAGE_ID: {:?}", image_id);
     // let mut pre_state_bits: Vec<u8> = Vec::new();
@@ -211,7 +216,7 @@ fn main() {
     // blake3_digest is the journal digest of the verify_stark guest.
     // verify_stark_receipt is the SuccinctReceipt of the verify_stark guest.
     let (verify_stark_receipt, blake3_digest, verify_stark_method_id) =
-        verify_stark(pow_receipt, pow_journal, pow_image_id);
+        verify_stark(pow_receipt, pow_journal, _pow_image_id);
     let verify_stark_succinct = verify_stark_receipt.inner.succinct().unwrap();
     println!(
         "VERIFY_STARK SUCCINCT claim: {:?}",
@@ -236,8 +241,8 @@ fn main() {
     println!("Blake3 digest: {:?}", blake3_digest);
     let prover = get_prover_server(&ProverOpts::default()).unwrap();
     // verify_stark_receipt.inner.succinct().unwrap() is a NoOp since it is already succinct.
-    let ident_receipt = prover.identity_p254(&verify_stark_succinct).unwrap();
-    let verifier_params = ident_receipt.verifier_parameters;
+    let ident_receipt = prover.identity_p254(verify_stark_succinct).unwrap();
+    // let verifier_params = ident_receipt.verifier_parameters;
 
     println!("VERIFY_STARK IDENT claim: {:?}", ident_receipt.claim);
     println!(
@@ -253,15 +258,11 @@ fn main() {
         "VERIFY_STARK IDENT verifier parameters: {:?}",
         ident_receipt.verifier_parameters
     );
-    let identity_p254_seal_bytes = ident_receipt.get_seal_bytes();
+    // let identity_p254_seal_bytes = ident_receipt.get_seal_bytes();
 
     println!("VERIFY_STARK IMAGE_ID: {:?}", verify_stark_method_id);
 
-    let _succinct_proof = stark_to_succinct(
-        &identity_p254_seal_bytes,
-        &blake3_digest,
-        &verify_stark_method_id,
-    );
+    stark_to_succinct(ident_receipt, &blake3_digest, &verify_stark_method_id);
 }
 
 pub fn initialize_logging() {

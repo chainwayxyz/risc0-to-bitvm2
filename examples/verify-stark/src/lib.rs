@@ -8,7 +8,7 @@ pub use verify_methods::VERIFY_ID;
 pub fn verify_stark(
     stark_receipt: Receipt,
     stark_journal: Journal,
-    assumption_method_id: [u32; 8],
+    _assumption_method_id: [u32; 8],
 ) -> (Receipt, [u8; 32], [u32; 8]) {
     // Hard-code the general purpose circuit ID for the verify_stark method so that VERIFY_ID has its commitment.
     // Will have to change it from circuit to circuit.

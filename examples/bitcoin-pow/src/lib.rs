@@ -70,9 +70,9 @@ pub fn calculate_pow() -> (Receipt, Journal, [u32; 8]) {
     //     "Journal output should deserialize into the same types (& order) that it was written",
     // );
 
-    let (pow, last_block_hash): ([u32; 8], [u32; 8]) = receipt.journal.decode().expect(
-        "Journal output should deserialize into the same types (& order) that it was written",
-    );
+    // let (pow, last_block_hash): ([u32; 8], [u32; 8]) = receipt.journal.decode().expect(
+    //     "Journal output should deserialize into the same types (& order) that it was written",
+    // );
 
     // let last_block_header_str: &str = "01000000e915d9a478e3adf3186c07c61a22228b10fd87df343c92782ecc052c000000006e06373c80de397406dc3d19c90d71d230058d28293614ea58d6a57f8f5d32f8b8ce6649ffff001d173807f8";
     // let last_block_header: Header =

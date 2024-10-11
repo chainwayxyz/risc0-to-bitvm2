@@ -3,10 +3,11 @@ pragma circom 2.0.4;
 include "../../circomlib/circuits/sha256/sha256.circom";
 include "../../circomlib/circuits/bitify.circom";
 
+// Here, we take the journal (commitments of the stark_verify guest) and generate the claim_digest, which corresponds to the out[2], out[3] of the iop.
 template Journal() {
     signal input journal_bits_in[256]; // journal in bits
     signal input pre_state_digest_bits[256]; // pre_state_digest in bits, this is kind of needed since it changes each time a different guest circuit is used
-    signal output out[2];
+    signal output out[2]; // claim_digest in [u128, u128]
     // signal output journal_digest_252[252];
     component claim_hasher = Sha256(1360); // hash(receipt_claim_tag_hash, claim_input_digest, claim_pre_digest, claim_post_digest, claim_output_digest, 00000000000000000400)
     component output_hasher = Sha256(784); // Depends on journal, hash(output_tag_hash, journal_digest, [0u8; 32], 0200)
@@ -19,17 +20,17 @@ template Journal() {
 
     component journal_hasher = Sha256(256); // Depends on journal, hash(journal)
 
-    // log("journal_bits");
-    // for (var i = 0; i < n; i++) {
-    //     log(journal_bits_in[i]);
-    // }
+    log("journal_bits");
+    for (var i = 0; i < 256; i++) {
+        log(journal_bits_in[i]);
+    }
     
     journal_hasher.in <== journal_bits_in;
 
-    // log("journal_digest");
-    // for (var i = 0; i < 256; i++) {
-    //     log(journal_hasher.out[i]);
-    // }
+    log("journal_digest");
+    for (var i = 0; i < 256; i++) {
+        log(journal_hasher.out[i]);
+    }
     
     for (var i = 0; i < 256; i++) {
         output_hasher.in[i] <== output_tag_bits[i];
@@ -96,10 +97,10 @@ template Journal() {
     claim_hasher.in[1358] <== 0;
     claim_hasher.in[1359] <== 0;
 
-    // log("sha digest");
-    // for (var i = 0; i < 256; i++) {
-    //     log(claim_hasher.out[i]);
-    // }
+    log("sha digest");
+    for (var i = 0; i < 256; i++) {
+        log(claim_hasher.out[i]);
+    }
 
     component b2n_1 = Bits2Num(128);
     for(var i = 0; i < 16; i++) {
@@ -116,7 +117,4 @@ template Journal() {
         }
     }
     out[1] <== b2n_2.out;
-    // for (var i = 0; i < 252; i++) {
-    //     journal_digest_252[i] <== journal_hasher.out[i];
-    // }
 }
