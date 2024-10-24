@@ -7,7 +7,7 @@ use std::io::Read;
 risc0_zkvm::guest::entry!(main);
 
 fn main() {
-    let assumption_method_id: [u32; 8] = CALCULATE_POW_ID; // Change this from circuit to circuit.
+    let assumption_method_id: [u32; 8] = CALCULATE_POW_ID; // NOTE: Change this from circuit to circuit.
     let journal_length: u32 = env::read();
     let mut journal_vec = vec![0u8; journal_length as usize + 1];
     for i in 0..journal_length as usize + 1 {

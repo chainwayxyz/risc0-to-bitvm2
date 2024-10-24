@@ -182,12 +182,16 @@ fn main() {
     initialize_logging();
     // No need to include journal and the METHOD_ID, they are included in the receipt.
     // pow_receipt is the SuccinctReceipt of the PoW.
-    let (pow_receipt, pow_journal, _pow_image_id) = calculate_pow();
+    let (pow_receipt, pow_journal, _pow_image_id) = calculate_pow(None, None, 50, Some(100));
 
     // blake3_digest is the journal digest of the verify_stark guest.
     // verify_stark_receipt is the SuccinctReceipt of the verify_stark guest.
     let (verify_stark_receipt, blake3_digest, verify_stark_method_id) =
-        verify_stark(pow_receipt, pow_journal, _pow_image_id);
+        verify_stark(pow_receipt.unwrap(), pow_journal.unwrap(), _pow_image_id);
+    println!(
+        "WORK ON THE RECURSIVE HEADER PROOF: {:?}",
+        verify_stark_receipt
+    );
     let verify_stark_succinct = verify_stark_receipt.inner.succinct().unwrap();
     println!("VERIFY_STARK METHOD ID: {:?}", verify_stark_method_id);
     println!(
