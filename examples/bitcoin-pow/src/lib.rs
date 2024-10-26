@@ -89,9 +89,19 @@ pub fn calculate_pow(
             env.write(&1).unwrap();
             println!("WRITE 1");
             env.write(&CALCULATE_POW_ID).unwrap();
-            env.add_assumption(prev_receipt.clone().unwrap());
-            println!("ADD ASSUMPTION");
+            // env.add_assumption(prev_receipt.clone().unwrap());
+            // println!("ADD ASSUMPTION");
             env.write(&prev_receipt.clone().unwrap().journal.bytes).unwrap();
+            // write to a file with filename blockhash.json
+            // println!("{:?}", last_proven_blockhash.unwrap());
+            println!("{:?}", prev_receipt.clone().unwrap());
+            std::fs::write(format!("{}.json", chunk_index), serde_json::to_string(&prev_receipt.clone().unwrap()).unwrap()).unwrap(); // TODO: Write these receipts with the blockhash as the filename
+
+            // // read the receipt from the file
+            // let receipt: Receipt = serde_json::from_str(
+            //     &std::fs::read_to_string(format!("{}.json", hex::encode(blockhash))).unwrap(),
+            // )
+            // .unwrap();
             println!("WRITE JOURNAL BYTES: {:?}", prev_receipt.unwrap().journal.bytes);
         }
 
@@ -117,6 +127,7 @@ pub fn calculate_pow(
         let prover = default_prover();
         let prover_opts = ProverOpts::succinct();
         prev_receipt = Some(prover.prove_with_opts(env, CALCULATE_POW_ELF, &prover_opts).unwrap().receipt);
+        println!("CHUNK INDEX: {:?} PROVEN", chunk_index);
     }
     let final_journal = prev_receipt.clone().unwrap().journal;
     (prev_receipt.clone(), Some(final_journal), CALCULATE_POW_ID)

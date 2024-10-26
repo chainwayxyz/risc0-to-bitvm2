@@ -9,7 +9,7 @@ risc0_zkvm::guest::entry!(main);
 // The minimum amount of work required for a block to be valid (represented as `bits`)
 const MAX_BITS: u32 = 0x1d00FFFF;
 // The minimum amount of work required for a block to be valid (represented as `target`)
-const MAX_TARGET: U256 = U256::new([Limb(0), Limb(0xFFFF), Limb(0), Limb(0), Limb(0), Limb(0), Limb(0), Limb(0)]); // "0x00000000FFFF0000000000000000000000000000000000000000000000000000"
+const MAX_TARGET: U256 = U256::new([Limb(0), Limb(0), Limb(0), Limb(0), Limb(0), Limb(0), Limb(0xFFFF0000), Limb(0)]); // "0x00000000FFFF0000000000000000000000000000000000000000000000000000"
 // An epoch should be two weeks (represented as number of seconds)
 // seconds/minute * minutes/hour * hours/day * 14 days
 const EXPECTED_EPOCH_TIMESPAN: u32 = 60 * 60 * 24 * 14;
@@ -28,7 +28,7 @@ struct BlockHeader {
 
 #[derive(Debug, Clone)]
 struct ChainState {
-    block_height: u32, // TODO: Maybe use u64?
+    block_height: Option<u32>, // TODO: Maybe use u64?
     total_work: U256,
     best_block_hash: [u8; 32],
     current_target: [u8; 32], // Maybe just use u32 bits to use less data?
@@ -43,20 +43,36 @@ struct ChainState {
 //     225, 90, 8, 156, 104, 214, 25, 0, 0, 0, 0, 0,
 // ];
 
-macro_rules! double_sha256_hash {
-    ($($data:expr),+) => {{
-        use sha2::{Digest, Sha256};
-        let mut hasher = Sha256::new();
-        // First round of SHA256 hashing
-        $(
-            hasher.update($data);
-        )+
-        let first_hash_result = hasher.finalize_reset();
-        // Second round of SHA256 hashing
-        hasher.update(first_hash_result);
-        let result: [u8; 32] = hasher.finalize().try_into().expect("SHA256 should produce a 32-byte output");
-        result
-    }};
+// macro_rules! double_sha256_hash {
+//     ($($data:expr),+) => {{
+//         use sha2::{Digest, Sha256};
+//         let mut hasher = Sha256::new();
+//         // First round of SHA256 hashing
+//         $(
+//             hasher.update($data);
+//         )+
+//         let first_hash_result = hasher.finalize_reset();
+//         // Second round of SHA256 hashing
+//         hasher.update(first_hash_result);
+//         let result: [u8; 32] = hasher.finalize().try_into().expect("SHA256 should produce a 32-byte output");
+//         result
+//     }};
+// }
+
+fn double_sha256_hash(data_parts: &[&[u8]]) -> [u8; 32] {
+    use sha2::{Digest, Sha256};
+    let mut hasher = Sha256::new();
+
+    // First round of SHA256 hashing
+    for data in data_parts {
+        hasher.update(data);
+    }
+    let first_hash_result = hasher.finalize_reset();
+
+    // Second round of SHA256 hashing
+    hasher.update(first_hash_result);
+    let result: [u8; 32] = hasher.finalize().try_into().expect("SHA256 should produce a 32-byte output");
+    result
 }
 
 fn median(arr: [u32; 11]) -> u32 {
@@ -84,7 +100,6 @@ pub fn validate_threshold(
 ) {
     // Step 1: Decode the target from the 'bits' field
     let target = decode_compact_target(block_header_bits);
-
     // Step 2: Compare the block hash with the target
     check_hash_valid(block_hash, target);
 }
@@ -100,28 +115,66 @@ pub fn add_work(    block_header_bits: [u8; 4],
 pub fn calculate_new_difficulty(
     epoch_start_time: u32,
     last_timestamp: u32,
-    nbits: [u8; 4],
+    current_target: [u8; 32],
 ) -> [u8; 32] {
+    println!("Calculating new difficulty...");
+    println!("Epoch start time: {:?}", epoch_start_time);
+    println!("Last timestamp: {:?}", last_timestamp);
+    // println!("nbits: {:?}", nbits);
     // Step 1: Calculate the actual timespan of the epoch
-    let mut actual_timespan = epoch_start_time - last_timestamp;
+    let mut actual_timespan = last_timestamp - epoch_start_time;
     if actual_timespan < EXPECTED_EPOCH_TIMESPAN / 4 {
         actual_timespan = EXPECTED_EPOCH_TIMESPAN / 4;
     } else if actual_timespan > EXPECTED_EPOCH_TIMESPAN * 4 {
         actual_timespan = EXPECTED_EPOCH_TIMESPAN * 4;
     }
-    let target = decode_compact_target(nbits);
+    println!("Actual timespan: {:?}", actual_timespan);
+    // let target = decode_compact_target(nbits);
+    println!("Old Target: {:?}", current_target);
     // Step 2: Calculate the new target
-    let mut new_target = U256::from_le_bytes(target);
+    let mut new_target = U256::from_be_bytes(current_target);
     new_target = new_target
         .wrapping_mul(&U256::from(actual_timespan))
         .wrapping_div(&U256::from(EXPECTED_EPOCH_TIMESPAN));
-
+    println!("New target: {:?}", new_target);
+    println!("Max target: {:?}", MAX_TARGET);
     // Step 3: Clamp the new target to the maximum target
     if new_target > MAX_TARGET {
+        println!("Clamping new target to the maximum target");
         new_target = MAX_TARGET;
     }
+    println!("New target after checks: {:?}", new_target);
+    let new_target_bits = new_target.bits();
+    println!("New target bits: {:?}", new_target_bits);
+    let mut size = (263 - new_target_bits) / 8;
+    println!("Size: {:?}", size);
 
-    new_target.to_le_bytes()
+    let mut new_target_bytes: [u8; 32] = new_target.to_be_bytes();
+    // Find the first nonzero byte in the new target
+    // let mut first_nonzero_byte = 0;
+    // for i in 4..32 {
+    //     if new_target_bytes[i] != 0 {
+    //         first_nonzero_byte = i;
+    //         break;
+    //     }
+    // }
+    for j in (size + 2)..32 {
+        new_target_bytes[j] = 0;
+    }
+    println!("New target after clamping: {:?}", new_target_bytes);
+    new_target_bytes
+}
+
+fn target_to_compact(target: [u8; 32]) -> [u8; 4] {
+    let target_u256 = U256::from_le_bytes(target);
+    let target_bits = target_u256.bits();
+    let mut size = (263 - target_bits) / 8;
+    let mut compact_target = [0u8; 4];
+    compact_target[3] = (size + 3) as u8;
+    compact_target[0] = target[31 - size as usize];
+    compact_target[1] = target[30 - size as usize];
+    compact_target[2] = target[29 - size as usize];
+    compact_target
 }
 
 fn validate_target(nbits: [u8; 4], current_target: [u8; 32]) {
@@ -140,52 +193,112 @@ pub fn validate_and_apply_block_header(
     block_header: BlockHeader,
     chain_state: &mut ChainState,
  ) {
-    // Step 1: Validate the timestamp
-    validate_timestamp(block_header.time, chain_state.prev_11_timestamps);
-
-    // Step 2: Calculate new difficulty
-
-
-    // Step 1: Validate the target and add work
-    validate_target(block_header.bits.to_le_bytes(), chain_state.current_target);
-    validate_threshold(
-        block_header.bits.to_le_bytes(),
-        block_header.prev_block_hash,
-    );
-
-    let work = add_work(
-        block_header.bits.to_le_bytes(),
-        chain_state.total_work,
-    );
-
-    // Step 2: Update the chain state
-    chain_state.block_height += 1;
-    chain_state.total_work = work;
-    chain_state.best_block_hash = double_sha256_hash!(
+    let new_block_hash = double_sha256_hash(&[
         &block_header.version.to_le_bytes(),
         &block_header.prev_block_hash,
         &block_header.merkle_root,
         &block_header.time.to_le_bytes(),
         &block_header.bits.to_le_bytes(),
-        &block_header.nonce.to_le_bytes()
-    );
-
-    // Step 3: Update the epoch start time and the previous 11 timestamps
-    if chain_state.block_height % BLOCKS_PER_EPOCH == 0 {
-        chain_state.epoch_start_time = block_header.time;
-    }
-    chain_state.prev_11_timestamps[chain_state.block_height as usize % 11] =
-    block_header.time;
-
-    // Step 4: Update the current target
-    if chain_state.block_height % 2016 == 0 {
-        // Calculate the new target
-        let new_target = calculate_new_difficulty(
-            chain_state.epoch_start_time,
-            block_header.time,
+        &block_header.nonce.to_le_bytes(),
+    ]);
+    // Step 1: Validate the timestamp
+    validate_timestamp(block_header.time, chain_state.prev_11_timestamps);
+    println!("Timestamp is valid");
+    // Step 2: Validate the target and add work
+    if let Some(block_height) = chain_state.block_height {
+        // Existing code with block_height as Some
+        if block_height > 0 {
+            if block_header.time - chain_state.prev_11_timestamps[(block_height % 11) as usize] >= 1201 
+            && block_header.time - chain_state.prev_11_timestamps[(block_height % 11) as usize] < u32::pow(2, 31) 
+            && block_header.bits == 486604799 {
+                println!("Testnet 4 specific block detected");
+                validate_target(block_header.bits.to_le_bytes(), MAX_TARGET.to_be_bytes());
+            } else {
+                validate_target(block_header.bits.to_le_bytes(), chain_state.current_target);
+            }
+        }
+        println!("Target is valid");
+        println!("Prev Block hash: {:?}", block_header.prev_block_hash);
+        validate_threshold(
             block_header.bits.to_le_bytes(),
+            new_block_hash,
         );
-        chain_state.current_target = new_target;
+        println!("Threshold is valid");
+    
+        chain_state.best_block_hash = new_block_hash;
+    
+        let work = add_work(
+            block_header.bits.to_le_bytes(),
+            chain_state.total_work,
+        );
+        println!("Work is added: {:?}", work);
+    
+        // Step 3: Update the chain state
+        chain_state.total_work = work;
+    
+        // Step 4: Update the epoch start time and the previous 11 timestamps
+        if block_height % BLOCKS_PER_EPOCH == 2015 {
+            chain_state.epoch_start_time = block_header.time;
+        }
+        chain_state.prev_11_timestamps[(block_height + 1) as usize % 11] = block_header.time;
+    
+        // Step 4: Update the current target
+        if block_height % BLOCKS_PER_EPOCH == BLOCKS_PER_EPOCH - 2 {
+            let new_target = calculate_new_difficulty(
+                chain_state.epoch_start_time,
+                block_header.time,
+                chain_state.current_target,
+            );
+            println!("New target: {:?}", new_target);
+            chain_state.current_target = new_target;
+        }
+        
+        chain_state.block_height = Some(block_height + 1);
+        println!("Applied block header for height: {:?}", chain_state.block_height);
+    
+    } else {
+        // When block_height is None, assume starting from height 0
+        let block_height = 0;
+        
+        // Same code, but without checking for block_height > 0 since it's 0 now
+        validate_target(block_header.bits.to_le_bytes(), chain_state.current_target);
+        
+        println!("Target is valid");
+        println!("Prev Block hash: {:?}", block_header.prev_block_hash);
+        validate_threshold(
+            block_header.bits.to_le_bytes(),
+            new_block_hash,
+        );
+        println!("Threshold is valid");
+    
+        chain_state.best_block_hash = new_block_hash;
+    
+        let work = add_work(
+            block_header.bits.to_le_bytes(),
+            chain_state.total_work,
+        );
+        println!("Work is added: {:?}", work);
+    
+        // Step 3: Update the chain state
+        chain_state.total_work = work;
+    
+        // Step 4: Update the epoch start time and the previous 11 timestamps
+        chain_state.epoch_start_time = block_header.time;
+        chain_state.prev_11_timestamps[block_height as usize % 11] = block_header.time;
+    
+        // Step 4: Update the current target
+        // if block_height % BLOCKS_PER_EPOCH == BLOCKS_PER_EPOCH - 2 {
+        //     let new_target = calculate_new_difficulty(
+        //         chain_state.epoch_start_time,
+        //         block_header.time,
+        //         target_to_compact(chain_state.current_target),
+        //     );
+        //     println!("New target: {:?}", new_target);
+        //     chain_state.current_target = new_target;
+        // }
+        
+        chain_state.block_height = Some(0);
+        println!("Applied block header for height: {:?}", chain_state.block_height);
     }
 }
 
@@ -214,6 +327,10 @@ pub fn decode_compact_target(bits: [u8; 4]) -> [u8; 32] {
 }
 
 fn check_hash_valid(hash: [u8; 32], target: [u8; 32]) {
+    println!("Validating hash...");
+    println!("Target: {:?}", target);
+    println!("Hash: {:?}", hash);
+
     // for loop from 31 to 0
     for i in (0..32).rev() {
         if hash[i] < target[i] {
@@ -236,10 +353,10 @@ pub fn calculate_work(target: [u8; 32]) -> U256 {
 
 fn main() {
     let mut chain_state = ChainState {
-        block_height: 0,
+        block_height: None,
         total_work: U256::ZERO,
         best_block_hash: [0u8; 32],
-        current_target: MAX_TARGET.to_le_bytes(),
+        current_target: MAX_TARGET.to_be_bytes(),
         epoch_start_time: 0,
         prev_11_timestamps: [0u32; 11],
     };
@@ -255,27 +372,35 @@ fn main() {
             println!("READ Journal slice: {:?}", journal_slice[i]);
         }
         println!("READ Journal: {:?}", journal_slice);
-        env::verify(assumption_method_id, &journal_slice).unwrap();
-        println!("VERIFY ASSUMPTION");
-        chain_state.block_height = u32::from_le_bytes(journal_slice[0..4].try_into().unwrap());
-        chain_state.total_work = U256::from_le_bytes(journal_slice[4..36].try_into().unwrap());
+        // env::verify(assumption_method_id, &journal_slice).unwrap();
+        // println!("VERIFY ASSUMPTION");
+        chain_state.block_height = Some(u32::from_le_bytes(journal_slice[0..4].try_into().unwrap()));
+        println!("PREVIOUS Block height: {:?}", chain_state.block_height);
+        chain_state.total_work = U256::from_be_bytes(journal_slice[4..36].try_into().unwrap());
+        println!("PREVIOUS Total work: {:?}", chain_state.total_work);
         chain_state.best_block_hash = journal_slice[36..68].try_into().unwrap();
+        println!("PREVIOUS Best block hash: {:?}", chain_state.best_block_hash);
         chain_state.current_target = journal_slice[68..100].try_into().unwrap();
+        println!("PREVIOUS Current target: {:?}", chain_state.current_target);
         chain_state.epoch_start_time = u32::from_le_bytes(journal_slice[100..104].try_into().unwrap());
+        println!("PREVIOUS Epoch start time: {:?}", chain_state.epoch_start_time);
         for i in 0..11 {
             chain_state.prev_11_timestamps[i] = u32::from_le_bytes(journal_slice[104 + 4 * i..108 + 4 * i].try_into().unwrap());
         }
-        
+        println!("PREVIOUS Prev 11 timestamps: {:?}", chain_state.prev_11_timestamps);
     }
 
     let k: u32 = env::read(); // Number of blocks to be read
     println!("READ Number of blocks: {:?}", k);
-    for _ in 0..k {
+    for i in 0..k {
         let curr_version: i32 = env::read();
         println!("READ Current version: {:?}", curr_version);
         let curr_merkle_root: [u8; 32] = env::read();
         println!("READ Current merkle root: {:?}", curr_merkle_root);
         let curr_time: u32 = env::read();
+        if proof_type == 0 && i == 0 {
+            chain_state.epoch_start_time = curr_time;
+        }
         println!("READ Current time: {:?}", curr_time);
         let curr_bits: u32 = env::read();
         println!("READ Current bits: {:?}", curr_bits);
@@ -312,7 +437,7 @@ fn main() {
         env_target[i] = (chain_state.current_target[4 * i] as u32) + ((chain_state.current_target[4 * i + 1] as u32) << 8) + ((chain_state.current_target[4 * i + 2] as u32) << 16) + ((chain_state.current_target[4 * i + 3] as u32) << 24);
     }
     // Outputs:
-    env::commit(&chain_state.block_height);
+    env::commit(&chain_state.block_height.unwrap());
     println!("COMMIT Block height: {:?}", chain_state.block_height);
     env::commit(&env_total_work);
     println!("COMMIT Total work: {:?}", env_total_work);

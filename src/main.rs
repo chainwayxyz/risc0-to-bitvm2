@@ -6,13 +6,16 @@ use std::{
 
 use bitcoin_pow::calculate_pow;
 use crypto_bigint::U256;
+use hex::ToHex;
 // use hello_world::multiply;
 use num_bigint::BigUint;
 use num_traits::Num;
 use risc0_groth16::to_json;
 use risc0_zkp::core::hash::hash_suite_from_name;
 // use risc0_groth16::ProofJson;
-use risc0_zkvm::{get_prover_server, ProverOpts, ReceiptClaim, SuccinctReceipt};
+use risc0_zkvm::{
+    get_prover_server, ProverOpts, ReceiptClaim, SuccinctReceipt, SuccinctReceiptVerifierParameters,
+};
 use serde_json::Value;
 use std::env;
 use std::str::FromStr;
@@ -60,14 +63,22 @@ pub fn stark_to_succinct(
         }
     }
 
-    // let groth16_verifier_params = Groth16ReceiptVerifierParameters::default();
-    // let control_root = groth16_verifier_params.control_root;
-    // let id_bn254_fr = groth16_verifier_params.bn254_control_id;
-
-    // let control_root_bits = control_root
-    //     .as_bytes()
-    //     .iter()
-    //     .flat_map(|&byte| (0..8).rev().map(move |i| (byte >> i) & 1));
+    let succinct_verifier_params = SuccinctReceiptVerifierParameters::default();
+    println!("Succinct verifier params: {:?}", succinct_verifier_params);
+    let succinct_control_root = succinct_verifier_params.control_root;
+    println!("Succinct control root: {:?}", succinct_control_root);
+    let mut succinct_control_root_bytes: [u8; 32] =
+        succinct_control_root.as_bytes().try_into().unwrap();
+    succinct_control_root_bytes.reverse();
+    let succinct_control_root_bytes: String = succinct_control_root_bytes.encode_hex();
+    let a1_str = succinct_control_root_bytes[0..32].to_string();
+    let a0_str = succinct_control_root_bytes[32..64].to_string();
+    println!("Succinct control root a0: {:?}", a0_str);
+    println!("Succinct control root a1: {:?}", a1_str);
+    let a0_dec = to_decimal(&a0_str).unwrap();
+    let a1_dec = to_decimal(&a1_str).unwrap();
+    println!("Succinct control root a0 dec: {:?}", a0_dec);
+    println!("Succinct control root a1 dec: {:?}", a1_dec);
 
     let id_bn254_fr_bits = ident_receipt
         .control_id
@@ -75,28 +86,10 @@ pub fn stark_to_succinct(
         .iter()
         .flat_map(|&byte| (0..8).rev().map(move |i| (byte >> i) & 1));
 
-    // let q = journal_bits.len() / 252;
-    // let r = journal_bits.len() % 252;
-    // let mut journal_chunks: Vec<U256> = Vec::new();
-    // for i in 0..q {
-    //     journal_chunks.push(bits_to_num(
-    //         252,
-    //         &journal_bits[i * 252..(i + 1) * 252].to_vec(),
-    //     ));
-    // }
-    // if r > 0 {
-    //     journal_chunks.push(bits_to_num(r, &journal_bits[q * 252..].to_vec()));
-    // }
     let mut seal_json: Value = {
         let file_content = fs::read_to_string(&seal_path).unwrap();
         serde_json::from_str(&file_content).unwrap()
     };
-
-    // Now extend the seal json by adding journal
-    // let journal_str_vec = journal_chunks
-    //     .iter()
-    //     .map(|s| to_decimal(&s.to_string()).unwrap())
-    //     .collect::<Vec<String>>();
 
     let journal_bits_str_vec: Vec<String> = journal_bits
         .iter()
@@ -107,23 +100,14 @@ pub fn stark_to_succinct(
         .map(|s| s.to_string())
         .collect::<Vec<String>>();
 
-    // let control_root_bits_str_vec = control_root_bits
-    //     .map(|s| s.to_string())
-    //     .collect::<Vec<String>>();
-
     let id_bn254_fr_bits_str_vec = id_bn254_fr_bits
         .map(|s| s.to_string())
         .collect::<Vec<String>>();
 
     seal_json["journal_blake3_digest_bits"] = journal_bits_str_vec.into();
     seal_json["pre_state_digest_bits"] = pre_state_bits_str_vec.into();
-    // seal_json["control_root_bits"] = control_root_bits_str_vec.into();
     seal_json["id_bn254_fr_bits"] = id_bn254_fr_bits_str_vec.into();
-    seal_json["control_root"] = vec![
-        "83772146341471631187930826324717825419",
-        "61836260051057680434156651296065042667",
-    ]
-    .into();
+    seal_json["control_root"] = vec![a0_dec, a1_dec].into();
     std::fs::write(seal_path, serde_json::to_string_pretty(&seal_json).unwrap()).unwrap();
 
     println!("Starting proving");
@@ -180,9 +164,10 @@ pub fn to_decimal(s: &str) -> Option<String> {
 
 fn main() {
     initialize_logging();
+
     // No need to include journal and the METHOD_ID, they are included in the receipt.
     // pow_receipt is the SuccinctReceipt of the PoW.
-    let (pow_receipt, pow_journal, _pow_image_id) = calculate_pow(None, None, 50, Some(100));
+    let (pow_receipt, pow_journal, _pow_image_id) = calculate_pow(None, None, 50, None);
 
     // blake3_digest is the journal digest of the verify_stark guest.
     // verify_stark_receipt is the SuccinctReceipt of the verify_stark guest.
@@ -220,9 +205,7 @@ fn main() {
     );
     println!("Blake3 digest: {:?}", blake3_digest);
     let prover = get_prover_server(&ProverOpts::default()).unwrap();
-    // verify_stark_receipt.inner.succinct().unwrap() is a NoOp since it is already succinct.
     let ident_receipt = prover.identity_p254(verify_stark_succinct).unwrap();
-    // let verifier_params = ident_receipt.verifier_parameters;
     println!(
         "VERIFY_STARK IDENT CONTROL ROOT: {:?}",
         control_root(&ident_receipt)
@@ -241,7 +224,6 @@ fn main() {
         "VERIFY_STARK IDENT verifier parameters: {:?}",
         ident_receipt.verifier_parameters
     );
-    // let identity_p254_seal_bytes = ident_receipt.get_seal_bytes();
 
     println!("VERIFY_STARK IMAGE_ID: {:?}", verify_stark_method_id);
 
