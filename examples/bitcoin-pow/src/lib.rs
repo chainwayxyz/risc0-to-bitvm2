@@ -95,7 +95,7 @@ pub fn calculate_pow(
             // write to a file with filename blockhash.json
             // println!("{:?}", last_proven_blockhash.unwrap());
             println!("{:?}", prev_receipt.clone().unwrap());
-            std::fs::write(format!("{}.json", chunk_index), serde_json::to_string(&prev_receipt.clone().unwrap()).unwrap()).unwrap(); // TODO: Write these receipts with the blockhash as the filename
+            // std::fs::write(format!("{}.json", chunk_index), serde_json::to_string(&prev_receipt.clone().unwrap()).unwrap()).unwrap(); // TODO: Write these receipts with the blockhash as the filename
 
             // // read the receipt from the file
             // let receipt: Receipt = serde_json::from_str(
@@ -127,6 +127,7 @@ pub fn calculate_pow(
         let prover = default_prover();
         let prover_opts = ProverOpts::succinct();
         prev_receipt = Some(prover.prove_with_opts(env, CALCULATE_POW_ELF, &prover_opts).unwrap().receipt);
+        std::fs::write(format!("{}.json", chunk_index), serde_json::to_string(&prev_receipt.clone().unwrap()).unwrap()).unwrap(); // TODO: Write these receipts with the blockhash as the filename
         println!("CHUNK INDEX: {:?} PROVEN", chunk_index);
     }
     let final_journal = prev_receipt.clone().unwrap().journal;
