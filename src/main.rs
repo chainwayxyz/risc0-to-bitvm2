@@ -24,6 +24,7 @@ use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{fmt, EnvFilter};
 use verify_stark::verify_stark;
+use bitcoin_pow::CALCULATE_POW_ID;
 
 pub fn stark_to_succinct(
     ident_receipt: SuccinctReceipt<ReceiptClaim>,

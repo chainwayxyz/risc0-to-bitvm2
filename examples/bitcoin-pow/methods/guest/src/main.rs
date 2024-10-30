@@ -309,7 +309,7 @@ fn main() {
     // println!("READ Proof type: {:?}", prev_proof_type);
     if prev_proof_type == 1 { // If we are verifying an existing proof, we are sure that it must be of Mode0.
         let assumption_method_id: [u32; 8] = env::read(); // NOTE: Change this from circuit to circuit.
-        // println!("READ Assumption method ID: {:?}", assumption_method_id);
+        println!("READ Assumption method ID: {:?}", assumption_method_id);
         // let journal_length: u32 = env::read();
         let mut journal_slice = [0u8; 148];
         let journal_len: u32 = env::read(); // We will not need this.
