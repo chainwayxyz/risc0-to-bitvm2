@@ -157,7 +157,10 @@ pub fn calculate_pow(
         // Obtain the default prover and prove the current chunk
         let prover = default_prover();
         let prover_opts = ProverOpts::succinct();
+        let start_time = std::time::Instant::now();
         prev_receipt = Some(prover.prove_with_opts(env, CALCULATE_POW_ELF, &prover_opts).unwrap().receipt);
+        let end_time = std::time::Instant::now();
+        println!("PROOF TIME: {:?}", end_time - start_time);
         std::fs::write(format!("block_header_proofs/{}.json", chunk_index), serde_json::to_string(&prev_receipt.clone().unwrap()).unwrap()).unwrap(); // TODO: Write these receipts with the blockhash as the filename
         println!("CHUNK INDEX: {:?} PROVEN", chunk_index);
     }
