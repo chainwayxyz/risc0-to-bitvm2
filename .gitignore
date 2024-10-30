@@ -20,3 +20,5 @@ proof/fflonk/test_fflonk_verifier.sol
 proof/fflonk/test_fflonk_verification_key.json
 proof/fflonk/test_fflonk.zkey
 proof/fflonk/test_fflonk_verifier.sol
+examples/bitcoin-pow/methods/guest/target
+block_header_proofs

@@ -81,8 +81,8 @@ template VerifyForGuest() {
     // log("id_bn254_fr_b2n.out");
     // log(id_bn254_fr_b2n.out);
 
-    stark_verifier.out[0] === control_root[0]; // TODO: Handle these constant values. I do not remember what they are.
-    stark_verifier.out[1] === control_root[1]; // Apparently, these are the digest of the Verifier Parameters.
+    stark_verifier.out[0] === control_root[0];
+    stark_verifier.out[1] === control_root[1];
     stark_verifier.out[2] === claim.out[0];
     stark_verifier.out[3] === claim.out[1];
 

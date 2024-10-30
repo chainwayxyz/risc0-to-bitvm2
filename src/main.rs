@@ -167,7 +167,7 @@ fn main() {
 
     // No need to include journal and the METHOD_ID, they are included in the receipt.
     // pow_receipt is the SuccinctReceipt of the PoW.
-    let (pow_receipt, pow_journal, _pow_image_id) = calculate_pow(None, None, 50, None);
+    let (pow_receipt, pow_journal, _pow_image_id) = calculate_pow(None, None, 50, None, Some(500), 2);
 
     // blake3_digest is the journal digest of the verify_stark guest.
     // verify_stark_receipt is the SuccinctReceipt of the verify_stark guest.

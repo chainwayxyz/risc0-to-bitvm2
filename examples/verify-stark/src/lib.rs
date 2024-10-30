@@ -15,7 +15,7 @@ pub fn verify_stark(
 
     println!("stark receipt: {:?}", stark_receipt);
     println!("stark journal: {:?}", stark_receipt.journal.bytes);
-    println!("journal length: {:?}", stark_journal);
+    println!("journal length: {:?}", stark_journal.bytes.len());  
 
     let env = ExecutorEnv::builder()
         .add_assumption(stark_receipt)

@@ -14,9 +14,9 @@ fn main() {
         journal_vec[i as usize] = env::read();
     }
 
-    println!("Journal: {:?}", journal_vec);
-    println!("Journal length: {:?}", journal_length);
-    println!("ASSUMPTION METHOD ID: {:?}", assumption_method_id);
+    println!("VERIFY_STARK GUEST Journal: {:?}", journal_vec);
+    println!("VERIFY_STARK GUEST Journal length: {:?}", journal_length);
+    println!("VERIFY_STARK GUEST ASSUMPTION METHOD ID: {:?}", assumption_method_id);
 
     env::verify(assumption_method_id, &journal_vec[1..journal_length as usize+1]).unwrap();
     let digest: [u8; 32] = blake3::hash(&journal_vec).into();
