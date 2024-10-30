@@ -72,6 +72,7 @@ pub fn calculate_pow(
 
     for (chunk_index, chunk) in blockheaders_to_prove.iter().enumerate() {
         let mut env = ExecutorEnv::builder();
+        env.segment_limit_po2(21);
 
         if chunk_index == 0 && last_proven_blockhash.is_none() {
             env.write(&0).unwrap();
