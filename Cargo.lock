@@ -1279,22 +1279,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "95505c38b4572b2d910cecb0281560f54b440a19336cbbcb27bf6ce6adc6f5a8"
 
 [[package]]
-name = "hello-world"
-version = "0.1.0"
-dependencies = [
- "hello-world-methods",
- "risc0-zkvm",
- "serde",
-]
-
-[[package]]
-name = "hello-world-methods"
-version = "0.1.0"
-dependencies = [
- "risc0-build",
-]
-
-[[package]]
 name = "hermit-abi"
 version = "0.3.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2647,7 +2631,6 @@ dependencies = [
  "bitcoin-pow",
  "crypto-bigint 0.5.2",
  "env_logger",
- "hello-world",
  "hex",
  "num-bigint 0.4.5",
  "num-traits",

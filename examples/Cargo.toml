@@ -1,7 +1,6 @@
 [workspace]
 resolver = "2"
 members = [
-  "hello-world",
   "bitcoin-pow",
   "verify-stark"
 ]
