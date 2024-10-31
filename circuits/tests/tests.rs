@@ -14,7 +14,6 @@ mod tests {
             method_id: [0; 8],
             prev_proof: circuits::header_chain::HeaderChainPrevProofType::GenesisBlock,
             block_headers: vec![],
-            output_type: circuits::header_chain::HeaderChainCircuitOutputType::FullState,
         };
         host.write(&input);
         header_chain_circuit(&host);

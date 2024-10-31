@@ -98,9 +98,16 @@ fn compact_target_to_bytes(nbits: u32) -> [u8; 32] {
     target
 }
 
-fn decode_compact_target(bits: u32) -> U256 {
-    let target: [u8; 32] = compact_target_to_bytes(bits);
-    U256::from_le_bytes(target)
+fn target_to_compact(target: [u8; 32]) -> u32 {
+    let target_u256 = U256::from_le_bytes(target);
+    let target_bits = target_u256.bits();
+    let size = (263 - target_bits) / 8;
+    let mut compact_target = [0u8; 4];
+    compact_target[3] = (size + 3) as u8;
+    compact_target[0] = target[31 - size as usize];
+    compact_target[1] = target[30 - size as usize];
+    compact_target[2] = target[29 - size as usize];
+    u32::from_be_bytes(compact_target)
 }
 
 fn check_hash_valid(hash: [u8; 32], target_bytes: [u8; 32]) {
@@ -155,8 +162,8 @@ fn calculate_new_difficulty(
     // let target = decode_compact_target(nbits);
     // println!("Old Target: {:?}", current_target);
     // Step 2: Calculate the new target
-    let mut new_target = decode_compact_target(current_target);
-    new_target = new_target
+    let new_target_bytes = compact_target_to_bytes(current_target);
+    let mut new_target = U256::from_be_bytes(new_target_bytes)
         .wrapping_mul(&U256::from(actual_timespan))
         .wrapping_div(&U256::from(EXPECTED_EPOCH_TIMESPAN));
     // println!("New target: {:?}", new_target);
@@ -211,12 +218,7 @@ pub fn validate_and_apply_block_header(block_header: BlockHeader, chain_state: &
         );
 
         chain_state.current_target_bytes = new_target_bytes;
-        chain_state.current_target_bits = u32::from_be_bytes([
-            new_target_bytes[28],
-            new_target_bytes[29],
-            new_target_bytes[30],
-            new_target_bytes[31],
-        ]); // TODO: Fix this
+        chain_state.current_target_bits = target_to_compact(new_target_bytes);
     }
 
     chain_state.block_height = chain_state.block_height.wrapping_add(1);
@@ -236,18 +238,10 @@ pub enum HeaderChainPrevProofType {
 }
 
 #[derive(Debug, BorshDeserialize, BorshSerialize)]
-pub enum HeaderChainCircuitOutputType {
-    FullState,
-    BestBlockHash,
-    KDepthBlockHash,
-}
-
-#[derive(Debug, BorshDeserialize, BorshSerialize)]
 pub struct HeaderChainCircuitInput {
     pub method_id: [u32; 8],
     pub prev_proof: HeaderChainPrevProofType,
     pub block_headers: Vec<BlockHeader>,
-    pub output_type: HeaderChainCircuitOutputType,
 }
 
 pub fn header_chain_circuit(guest: &impl ZkvmGuest) {
@@ -264,8 +258,9 @@ pub fn header_chain_circuit(guest: &impl ZkvmGuest) {
             prev_11_timestamps: [0u32; 11],
         },
         HeaderChainPrevProofType::PrevProof(prev_proof) => {
+            assert_eq!(prev_proof.method_id, input.method_id);
+
             let prev_proof_serialized = borsh::to_vec(&prev_proof).unwrap();
-            // convert to &[u32]
             let mut prev_proof_bytes = [0u32; 148];
             for i in 0..148 {
                 prev_proof_bytes[i] = prev_proof_serialized[i] as u32;
@@ -280,22 +275,10 @@ pub fn header_chain_circuit(guest: &impl ZkvmGuest) {
         validate_and_apply_block_header(block_header, &mut chain_state);
     }
 
-    match input.output_type {
-        HeaderChainCircuitOutputType::FullState => {
-            let output = BlockHeaderCircuitOutput {
-                method_id: input.method_id,
-                chain_state,
-            };
-            guest.commit(&output);
-        }
-        HeaderChainCircuitOutputType::BestBlockHash => {
-            let output = chain_state.best_block_hash;
-            guest.commit(&output);
-        }
-        HeaderChainCircuitOutputType::KDepthBlockHash => {
-            todo!();
-        }
-    }
+    BlockHeaderCircuitOutput {
+        method_id: input.method_id,
+        chain_state,
+    };
 }
 
 #[cfg(test)]
