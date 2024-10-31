@@ -21,8 +21,8 @@ pub fn calculate_pow(
     k_depth: Option<u32>,
     output_type: u32,
 ) -> (Option<Receipt>, Option<Journal>, [u32; 8]) {
-    let auth = bitcoincore_rpc::Auth::UserPass("admin".to_string(), "admin".to_string());
-    let rpc = bitcoincore_rpc::Client::new("http://127.0.0.1:48332", auth).unwrap();
+    let auth = bitcoincore_rpc::Auth::UserPass("citrea".to_string(), "citrea".to_string());
+    let rpc = bitcoincore_rpc::Client::new("http://127.0.0.1:18443", auth).unwrap();
     if last_proven_blockhash.is_some() != last_receipt.clone().is_some() {
         panic!("Both last_proven_blockhash and last_receipt must be provided");
     }
@@ -84,9 +84,13 @@ pub fn calculate_pow(
             println!("WRITE CALCULATE_POW_ID");
             env.add_assumption(prev_receipt.clone().unwrap());
             println!("ADD ASSUMPTION");
-            env.write(&prev_receipt.clone().unwrap().journal.bytes).unwrap();
+            env.write(&prev_receipt.clone().unwrap().journal.bytes)
+                .unwrap();
             println!("{:?}", prev_receipt.clone().unwrap());
-            println!("WRITE JOURNAL BYTES: {:?}", prev_receipt.unwrap().journal.bytes);
+            println!(
+                "WRITE JOURNAL BYTES: {:?}",
+                prev_receipt.unwrap().journal.bytes
+            );
         }
 
         // Write the current chunk headers to the environment
@@ -116,12 +120,19 @@ pub fn calculate_pow(
                     println!("WRITE K_DEPTH {:?}", k_depth.unwrap());
                     for i in 0..k_depth.unwrap() {
                         if i == 0 {
-                            let blockhash = rpc.get_block_hash((end_block_height - k_depth.unwrap() + i + 1) as u64).unwrap();
-                            env.write(blockhash.as_byte_array()).unwrap();   
-                            println!("WRITE BLOCKHASH: {:?}", blockhash);                     
-                        }
-                        else {
-                            let blockhash = rpc.get_block_hash((end_block_height - k_depth.unwrap() + i + 1) as u64).unwrap();
+                            let blockhash = rpc
+                                .get_block_hash(
+                                    (end_block_height - k_depth.unwrap() + i + 1) as u64,
+                                )
+                                .unwrap();
+                            env.write(blockhash.as_byte_array()).unwrap();
+                            println!("WRITE BLOCKHASH: {:?}", blockhash);
+                        } else {
+                            let blockhash = rpc
+                                .get_block_hash(
+                                    (end_block_height - k_depth.unwrap() + i + 1) as u64,
+                                )
+                                .unwrap();
                             let header = rpc.get_block_header(&blockhash).unwrap();
                             env.write(&header.version).unwrap();
                             println!("WRITE VERSION: {:?}", header.version);
@@ -153,15 +164,24 @@ pub fn calculate_pow(
         }
 
         let env = env.build().unwrap();
-    
+
         // Obtain the default prover and prove the current chunk
         let prover = default_prover();
         let prover_opts = ProverOpts::succinct();
         let start_time = std::time::Instant::now();
-        prev_receipt = Some(prover.prove_with_opts(env, CALCULATE_POW_ELF, &prover_opts).unwrap().receipt);
+        prev_receipt = Some(
+            prover
+                .prove_with_opts(env, CALCULATE_POW_ELF, &prover_opts)
+                .unwrap()
+                .receipt,
+        );
         let end_time = std::time::Instant::now();
         println!("PROOF TIME: {:?}", end_time - start_time);
-        std::fs::write(format!("block_header_proofs/{}.json", chunk_index), serde_json::to_string(&prev_receipt.clone().unwrap()).unwrap()).unwrap(); // TODO: Write these receipts with the blockhash as the filename
+        std::fs::write(
+            format!("block_header_proofs/{}.json", chunk_index),
+            serde_json::to_string(&prev_receipt.clone().unwrap()).unwrap(),
+        )
+        .unwrap(); // TODO: Write these receipts with the blockhash as the filename
         println!("CHUNK INDEX: {:?} PROVEN", chunk_index);
     }
     let final_journal = prev_receipt.clone().unwrap().journal;
