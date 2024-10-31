@@ -14,6 +14,7 @@ use risc0_zkvm::{default_prover, ExecutorEnv, Receipt};
 use secp256k1::hashes::Hash;
 
 pub fn calculate_pow(
+    rpc: &bitcoincore_rpc::Client,
     last_proven_blockhash: Option<BlockHash>,
     last_receipt: Option<Receipt>,
     chunk_size: u32,
@@ -21,8 +22,6 @@ pub fn calculate_pow(
     k_depth: Option<u32>,
     output_type: u32,
 ) -> (Option<Receipt>, Option<Journal>, [u32; 8]) {
-    let auth = bitcoincore_rpc::Auth::UserPass("citrea".to_string(), "citrea".to_string());
-    let rpc = bitcoincore_rpc::Client::new("http://127.0.0.1:18443", auth).unwrap();
     if last_proven_blockhash.is_some() != last_receipt.clone().is_some() {
         panic!("Both last_proven_blockhash and last_receipt must be provided");
     }

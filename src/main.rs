@@ -165,10 +165,15 @@ pub fn to_decimal(s: &str) -> Option<String> {
 
 fn main() {
     initialize_logging();
+    let rpc_user = env::var("RPC_USER").unwrap();
+    let rpc_password = env::var("RPC_PASSWORD").unwrap();
+    let rpc_url = env::var("RPC_URL").unwrap();
 
+    let auth = bitcoincore_rpc::Auth::UserPass(rpc_user, rpc_password);
+    let rpc = bitcoincore_rpc::Client::new(&rpc_url, auth).unwrap();
     // No need to include journal and the METHOD_ID, they are included in the receipt.
     // pow_receipt is the SuccinctReceipt of the PoW.
-    let (pow_receipt, pow_journal, _pow_image_id) = calculate_pow(None, None, 50, None, Some(500), 2);
+    let (pow_receipt, pow_journal, _pow_image_id) = calculate_pow(&rpc, None, None, 50, None, Some(500), 2);
 
     // blake3_digest is the journal digest of the verify_stark guest.
     // verify_stark_receipt is the SuccinctReceipt of the verify_stark guest.
