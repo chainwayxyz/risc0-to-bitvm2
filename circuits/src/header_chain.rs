@@ -1,26 +1,14 @@
 use crate::ZkvmGuest;
 
 use borsh::{BorshDeserialize, BorshSerialize};
-use crypto_bigint::{Encoding, Limb, U256};
+use crypto_bigint::{Encoding, U256};
 use sha2::{Digest, Sha256};
 
 /// The minimum amount of work required for a block to be valid (represented as `bits`)
 const MAX_BITS: u32 = 0x1d00FFFF;
 
-#[cfg(target_pointer_width = "32")]
-// "0x00000000FFFF0000000000000000000000000000000000000000000000000000"
-const MAX_TARGET: U256 = U256::new([
-    Limb(0),
-    Limb(0),
-    Limb(0),
-    Limb(0),
-    Limb(0),
-    Limb(0),
-    Limb(0xFFFF0000),
-    Limb(0),
-]);
-#[cfg(not(target_pointer_width = "32"))]
-const MAX_TARGET: U256 = U256::new([Limb(0), Limb(0), Limb(0xFFFF0000), Limb(0)]);
+const MAX_TARGET: U256 =
+    U256::from_be_hex("00000000FFFF0000000000000000000000000000000000000000000000000000");
 
 /// An epoch should be two weeks (represented as number of seconds)
 /// seconds/minute * minutes/hour * hours/day * 14 days
@@ -189,7 +177,6 @@ fn calculate_new_difficulty(
 }
 
 pub fn validate_and_apply_block_header(block_header: BlockHeader, chain_state: &mut ChainState) {
-
     assert_eq!(block_header.prev_block_hash, chain_state.best_block_hash);
 
     let new_block_hash = block_header.compute_block_hash();
@@ -308,5 +295,35 @@ pub fn header_chain_circuit(guest: &impl ZkvmGuest) {
         HeaderChainCircuitOutputType::KDepthBlockHash => {
             todo!();
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_block_hash_calculation() {
+        let merkle_root: [u8; 32] =
+            hex::decode("3ba3edfd7a7b12b27ac72c3e67768f617fc81bc3888a51323a9fb8aa4b1e5e4a")
+                .unwrap()
+                .try_into()
+                .unwrap();
+        let block_header = BlockHeader {
+            version: 1,
+            prev_block_hash: [0u8; 32],
+            merkle_root: merkle_root,
+            time: 1231006505,
+            bits: 486604799,
+            nonce: 2083236893,
+        };
+
+        let expected_block_hash: [u8; 32] =
+            hex::decode("6fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d6190000000000")
+                .unwrap()
+                .try_into()
+                .unwrap();
+        let block_hash = block_header.compute_block_hash();
+        assert_eq!(block_hash, expected_block_hash);
     }
 }
