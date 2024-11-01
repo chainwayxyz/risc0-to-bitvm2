@@ -26,3 +26,4 @@ risc0_circuits/bitcoin-pow/target
 risc0_circuits/target
 risc0_circuits/verify-stark/target
 block_header_proofs
+headers.bin

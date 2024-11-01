@@ -1,8 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
-  "bitcoin-pow",
-  "verify-stark"
+  "header-chain",
 ]
 
 # Always optimize; otherwise tests take excessively long.

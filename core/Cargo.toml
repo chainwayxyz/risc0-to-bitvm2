@@ -1,0 +1,10 @@
+[package]
+name = "core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+circuits = { path = "../circuits" }
+header-chain-circuit = { path = "../guests/header-chain" }
+borsh = {version = "1.5.1", features = ["derive"] }
+risc0-zkvm = {version = "1.1.2", default-features = false, features = ["prove"]}

@@ -801,22 +801,4 @@ mod tests {
             assert_eq!(bits, end_target);
         }
     }
-
-    #[test]
-    fn test_proving() {
-        // read binary file as hex from /Users/ekrembal/Developer/chainway/risc0-to-bitvm2/circuits/headers.bin
-        let headers = include_bytes!(
-            "/Users/ekrembal/Developer/chainway/risc0-to-bitvm2/circuits/headers.bin"
-        );
-
-        println!("headers.len() = {}", headers.len());
-        println!("first 160 bytes = {:?}", hex::encode(&headers[..160]));
-        let headers = headers
-            .chunks(80)
-            .map(|header| BlockHeader::try_from_slice(header).unwrap())
-            .collect::<Vec<BlockHeader>>();
-
-        println!("headers.len() = {}", headers.len());
-        println!("headers[0] = {:?}", headers[5]);
-    }
 }
