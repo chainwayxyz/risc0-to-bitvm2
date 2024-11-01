@@ -19,12 +19,12 @@ const BLOCKS_PER_EPOCH: u32 = 2016;
 
 #[derive(Debug, Clone, BorshDeserialize, BorshSerialize)]
 pub struct BlockHeader {
-    version: i32,
-    prev_block_hash: [u8; 32], // The hash of the previous block in little endian form
-    merkle_root: [u8; 32],     // The Merkle root of the block's transactions in little endian form
-    time: u32,
-    bits: u32,
-    nonce: u32,
+    pub version: i32,
+    pub prev_block_hash: [u8; 32], // The hash of the previous block in little endian form
+    pub merkle_root: [u8; 32],     // The Merkle root of the block's transactions in little endian form
+    pub time: u32,
+    pub bits: u32,
+    pub nonce: u32,
 }
 
 impl BlockHeader {
@@ -50,12 +50,12 @@ impl BlockHeader {
 
 #[derive(Debug, Clone, BorshDeserialize, BorshSerialize)]
 pub struct ChainState {
-    block_height: u32,
-    total_work: [u8; 32],
-    best_block_hash: [u8; 32],
-    current_target_bits: u32,
-    epoch_start_time: u32, // Represents the time of the first block in the current epoch (the difficulty adjustment timestamp)
-    prev_11_timestamps: [u32; 11],
+    pub block_height: u32,
+    pub total_work: [u8; 32],
+    pub best_block_hash: [u8; 32],
+    pub current_target_bits: u32,
+    pub epoch_start_time: u32, // Represents the time of the first block in the current epoch (the difficulty adjustment timestamp)
+    pub prev_11_timestamps: [u32; 11],
 }
 
 fn median(arr: [u32; 11]) -> u32 {
@@ -126,6 +126,8 @@ fn calculate_new_difficulty(
 }
 
 fn check_hash_valid(hash: [u8; 32], target_bytes: [u8; 32]) {
+    let mut target_bytes = target_bytes;
+    target_bytes.reverse();
     for i in (0..32).rev() {
         if hash[i] < target_bytes[i] {
             // The hash is valid because a byte in hash is less than the corresponding byte in target
@@ -140,7 +142,7 @@ fn check_hash_valid(hash: [u8; 32], target_bytes: [u8; 32]) {
 }
 
 fn calculate_work(target: &[u8; 32]) -> U256 {
-    let target = U256::from_le_slice(target);
+    let target = U256::from_be_slice(target);
     let target_plus_one = target.saturating_add(&U256::ONE);
     let work = U256::MAX.wrapping_div(&target_plus_one);
     work
@@ -148,8 +150,8 @@ fn calculate_work(target: &[u8; 32]) -> U256 {
 
 #[derive(Debug, BorshDeserialize, BorshSerialize)]
 pub struct BlockHeaderCircuitOutput {
-    method_id: [u32; 8],
-    chain_state: ChainState,
+    pub method_id: [u32; 8],
+    pub chain_state: ChainState,
 }
 
 #[derive(Debug, BorshDeserialize, BorshSerialize)]
@@ -208,21 +210,22 @@ pub fn header_chain_circuit(guest: &impl ZkvmGuest) {
         // Check 4: Check timestamp
         validate_timestamp(block_header.time, chain_state.prev_11_timestamps);
 
-
         chain_state.best_block_hash = new_block_hash;
 
         total_work = total_work.wrapping_add(&current_work_add);
 
+        // We use wrapping_add here because the genesis block height is 0
+        chain_state.block_height = chain_state.block_height.wrapping_add(1);
 
         // Update the epoch start time and the previous 11 timestamps
-        if chain_state.block_height % BLOCKS_PER_EPOCH == BLOCKS_PER_EPOCH - 1 {
+        if chain_state.block_height % BLOCKS_PER_EPOCH == 0 {
             chain_state.epoch_start_time = block_header.time;
         }
-        chain_state.prev_11_timestamps[(chain_state.block_height + 1) as usize % 11] =
-            block_header.time;
+
+        chain_state.prev_11_timestamps[chain_state.block_height as usize % 11] = block_header.time;
 
         // Update the current target
-        if chain_state.block_height % BLOCKS_PER_EPOCH == BLOCKS_PER_EPOCH - 2 {
+        if chain_state.block_height % BLOCKS_PER_EPOCH == BLOCKS_PER_EPOCH - 1 {
             current_target_bytes = calculate_new_difficulty(
                 chain_state.epoch_start_time,
                 block_header.time,
@@ -232,16 +235,17 @@ pub fn header_chain_circuit(guest: &impl ZkvmGuest) {
             chain_state.current_target_bits = target_to_bits(&current_target_bytes);
             current_work_add = calculate_work(&current_target_bytes);
         }
-
-        chain_state.block_height = chain_state.block_height.wrapping_add(1);
     }
 
     chain_state.total_work = total_work.to_be_bytes();
 
-    BlockHeaderCircuitOutput {
+    println!("Final chain state: {:#?}", chain_state);
+    println!("Total work: {}", total_work.to_string());
+
+    guest.commit(&BlockHeaderCircuitOutput {
         method_id: input.method_id,
         chain_state,
-    };
+    });
 }
 
 #[cfg(test)]
@@ -801,5 +805,23 @@ mod tests {
             let bits = target_to_bits(&new_target_bytes);
             assert_eq!(bits, end_target);
         }
+    }
+
+    #[test]
+    fn test_proving() {
+        // read binary file as hex from /Users/ekrembal/Developer/chainway/risc0-to-bitvm2/circuits/headers.bin
+        let headers = include_bytes!(
+            "/Users/ekrembal/Developer/chainway/risc0-to-bitvm2/circuits/headers.bin"
+        );
+
+        println!("headers.len() = {}", headers.len());
+        println!("first 160 bytes = {:?}", hex::encode(&headers[..160]));
+        let headers = headers
+            .chunks(80)
+            .map(|header| BlockHeader::try_from_slice(header).unwrap())
+            .collect::<Vec<BlockHeader>>();
+
+        println!("headers.len() = {}", headers.len());
+        println!("headers[0] = {:?}", headers[5]);
     }
 }
