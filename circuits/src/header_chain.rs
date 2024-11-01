@@ -76,65 +76,55 @@ fn validate_timestamp(block_time: u32, prev_11_timestamps: [u32; 11]) {
     }
 }
 
-fn compact_target_to_bytes(nbits: u32) -> [u8; 32] {
-    let bits = nbits.to_be_bytes();
+/// https://learnmeabitcoin.com/technical/block/#bits
+fn bits_to_target(bits: u32) -> [u8; 32] {
+    let size = (bits >> 24) as usize;
+    let word = bits & 0x00ffffff;
 
-    let mut target = [0u8; 32];
-    let exponent = bits[0] as usize;
-    let value = ((bits[1] as u32) << 16) | ((bits[2] as u32) << 8) | (bits[3] as u32);
-
-    if exponent <= 3 {
-        // If the target size is 3 bytes or less, place the value at the end
-        let start_index = 4 - exponent;
-        for i in 0..exponent {
-            target[31 - i] = (value >> (8 * (start_index + i))) as u8;
-        }
+    // Prepare U256 target
+    let target = if size <= 3 {
+        U256::from(word >> (8 * (3 - size)))
     } else {
-        // If the target size is more than 3 bytes, place the value at the beginning and shift accordingly
-        for i in 0..3 {
-            target[exponent - 3 + i] = (value >> (8 * i)) as u8;
-        }
-    }
-    target
+        U256::from(word) << (8 * (size - 3))
+    };
+
+    target.to_be_bytes()
 }
 
-// fn target_to_compact(target: [u8; 32]) -> u32 {
-//     let target_u256 = U256::from_le_bytes(target);
-//     let target_bits = target_u256.bits();
-//     let size = (263 - target_bits) / 8;
-//     let mut compact_target = [0u8; 4];
-//     compact_target[3] = (size + 3) as u8;
-//     compact_target[0] = target[31 - size as usize];
-//     compact_target[1] = target[30 - size as usize];
-//     compact_target[2] = target[29 - size as usize];
-//     u32::from_be_bytes(compact_target)
-// }
+fn target_to_bits(target: &[u8; 32]) -> u32 {
+    let target_u256 = U256::from_be_slice(target);
 
+    // Clamp target if it exceeds the maximum target
+    let mut clamped_target = target_u256;
+    if clamped_target > MAX_TARGET {
+        clamped_target = MAX_TARGET;
+    }
 
-fn target_to_compact(target: [u8; 32]) -> u32 {
-    // Find the first non-zero byte from the left
-    let first_non_zero = target.iter().position(|&x| x != 0).unwrap_or(32);
-    
-    // Calculate the size of the significant bytes
-    let size = 32 - first_non_zero;
-    
-    // Prepare compact target bytes
-    let mut compact_target = [0u8; 4];
-    compact_target[0] = (size + 3) as u8;
-    
-    // Copy the most significant 3 bytes
-    if size > 0 {
-        compact_target[1] = target[first_non_zero];
+    // Determine the size based on the bit length of the target
+    let size = ((clamped_target.bits() + 7) / 8) as u32;
+
+    // Calculate the compact representation
+    let mut compact: u32 = if size <= 3 {
+        // Right-shift and convert the lower 3 bytes
+        let shifted = clamped_target >> (8 * (3 - size)) as usize;
+        let bytes = shifted.to_be_bytes();
+        u32::from_be_bytes([bytes[28], bytes[29], bytes[30], bytes[31]])
+    } else {
+        // Right-shift to fit into 3 bytes and mask for the mantissa
+        let shifted = clamped_target >> (8 * (size - 3)) as usize;
+        let bytes = shifted.to_be_bytes();
+        u32::from_be_bytes([bytes[28], bytes[29], bytes[30], bytes[31]]) & 0x007fffff
+    };
+
+    // Adjust if compact exceeds mantissa limits
+    if compact & 0x00800000 != 0 {
+        compact >>= 8;
     }
-    if size > 1 {
-        compact_target[2] = target[first_non_zero + 1];
-    }
-    if size > 2 {
-        compact_target[3] = target[first_non_zero + 2];
-    }
-    
-    u32::from_be_bytes(compact_target)
+
+    // Return the final compact bits
+    (size << 24) | compact
 }
+
 
 
 fn check_hash_valid(hash: [u8; 32], target_bytes: [u8; 32]) {
@@ -189,7 +179,7 @@ fn calculate_new_difficulty(
     // let target = decode_compact_target(nbits);
     // println!("Old Target: {:?}", current_target);
     // Step 2: Calculate the new target
-    let new_target_bytes = compact_target_to_bytes(current_target);
+    let new_target_bytes = bits_to_target(current_target);
     let mut new_target = U256::from_be_bytes(new_target_bytes)
         .wrapping_mul(&U256::from(actual_timespan))
         .wrapping_div(&U256::from(EXPECTED_EPOCH_TIMESPAN));
@@ -245,7 +235,7 @@ pub fn validate_and_apply_block_header(block_header: BlockHeader, chain_state: &
         );
 
         chain_state.current_target_bytes = new_target_bytes;
-        chain_state.current_target_bits = target_to_compact(new_target_bytes);
+        chain_state.current_target_bits = target_to_bits(&new_target_bytes);
     }
 
     chain_state.block_height = chain_state.block_height.wrapping_add(1);
@@ -313,6 +303,7 @@ mod tests {
     use super::*;
     use hex_literal::hex;
 
+    // From block 800000 to 800015
     const BLOCK_HEADERS: [[u8; 80]; 15] = [
         hex!("00601d3455bb9fbd966b3ea2dc42d0c22722e4c0c1729fad17210100000000000000000055087fab0c8f3f89f8bcfd4df26c504d81b0a88e04907161838c0c53001af09135edbd64943805175e955e06"),
         hex!("00a0012054a02827d7a8b75601275a160279a3c5768de4c1c4a702000000000000000000394ddc6a5de035874cfa22167bfe923953187b5a19fbb84e186dea3c78fd871c9bedbd6494380517f5c93c8c"),
@@ -409,12 +400,23 @@ mod tests {
             .collect::<Vec<BlockHeader>>();
 
         for header in block_headers {
-            let compact_target = compact_target_to_bytes(header.bits);
-            let nbits = target_to_compact(compact_target);
-            println!("Original bits: {:?}", header.bits);
-            println!("Converted bits: {:?}", nbits);
-            println!("compact_target: {:?}", compact_target);
+            let compact_target = bits_to_target(header.bits);
+            let nbits = target_to_bits(&compact_target);
             assert_eq!(nbits, header.bits);
         }
+    }
+
+    #[test]
+    fn test_bits_to_target() {
+        // https://learnmeabitcoin.com/explorer/block/00000000000000000002ebe388cb8fa0683fc34984cfc2d7d3b3f99bc0d51bfd
+        let expected_target = hex!("00000000000000000002f1280000000000000000000000000000000000000000");
+        let bits: u32 = 0x1702f128;
+        let target = bits_to_target(bits);
+        assert_eq!(target, expected_target);
+
+        let converted_bits = target_to_bits(&target);
+
+        println!("Original bits: {:?}", bits);
+        assert_eq!(converted_bits, bits);
     }
 }
