@@ -7,12 +7,10 @@ use std::{
 use bitcoin_pow::calculate_pow;
 use crypto_bigint::U256;
 use hex::ToHex;
-// use hello_world::multiply;
 use num_bigint::BigUint;
 use num_traits::Num;
 use risc0_groth16::to_json;
 use risc0_zkp::core::hash::hash_suite_from_name;
-// use risc0_groth16::ProofJson;
 use risc0_zkvm::{
     get_prover_server, ProverOpts, ReceiptClaim, SuccinctReceipt, SuccinctReceiptVerifierParameters,
 };
@@ -24,7 +22,6 @@ use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{fmt, EnvFilter};
 use verify_stark::verify_stark;
-use bitcoin_pow::CALCULATE_POW_ID;
 
 pub fn stark_to_succinct(
     ident_receipt: SuccinctReceipt<ReceiptClaim>,
@@ -41,7 +38,7 @@ pub fn stark_to_succinct(
     }
     let tmp_dir = tempdir().unwrap();
     let work_dir = std::env::var("RISC0_WORK_DIR");
-    let proof_type = std::env::var("PROOF_TYPE").unwrap_or("test-groth16".to_string());
+    let proof_type = std::env::var("PROOF_TYPE").unwrap_or("groth16".to_string());
     let work_dir = work_dir.as_ref().map(Path::new).unwrap_or(tmp_dir.path());
     let identity_p254_seal_bytes = ident_receipt.get_seal_bytes();
     std::fs::write(

@@ -20,9 +20,9 @@ proof/fflonk/test_fflonk_verifier.sol
 proof/fflonk/test_fflonk_verification_key.json
 proof/fflonk/test_fflonk.zkey
 proof/fflonk/test_fflonk_verifier.sol
-examples/bitcoin-pow/methods/guest/target
-examples/bitcoin-pow/methods/target
-examples/bitcoin-pow/target
-examples/target
-examples/verify-stark/target
+risc0_circuitss/bitcoin-pow/methods/guest/target
+risc0_circuits/bitcoin-pow/methods/target
+risc0_circuits/bitcoin-pow/target
+risc0_circuits/target
+risc0_circuits/verify-stark/target
 block_header_proofs
