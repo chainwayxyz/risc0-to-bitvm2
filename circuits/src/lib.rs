@@ -1,5 +1,3 @@
-use std::io::Read;
-
 use borsh::BorshDeserialize;
 use risc0_zkvm::guest::env::{self, Write};
 
