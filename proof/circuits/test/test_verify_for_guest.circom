@@ -1,9 +1,9 @@
 pragma circom 2.0.4;
 
-include "stark_verify.circom";
-include "blake3.circom";
-include "../../circomlib/circuits/sha256/sha256.circom";
-include "../../circomlib/circuits/bitify.circom";
+include "test_stark_verify.circom";
+include "../blake3.circom";
+include "../../../circomlib/circuits/sha256/sha256.circom";
+include "../../../circomlib/circuits/bitify.circom";
 
 // Here, we take the journal (commitments of the stark_verify guest) and generate the claim_digest, which corresponds to the out[2], out[3] of the iop.
 template Journal() {
@@ -130,7 +130,7 @@ template VerifyForGuest() {
         control_root_n2b[i] = Num2Bits(128);
         control_root_n2b[i].in <== control_root[i];
     }
-    
+
     component constants_hasher = Sha256(768);
     for (var i = 0; i < 2; i++) {
         for (var j = 0; j < 128; j++) {

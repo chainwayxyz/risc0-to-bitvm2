@@ -7,12 +7,10 @@ use std::{
 use bitcoin_pow::calculate_pow;
 use crypto_bigint::U256;
 use hex::ToHex;
-// use hello_world::multiply;
 use num_bigint::BigUint;
 use num_traits::Num;
 use risc0_groth16::to_json;
 use risc0_zkp::core::hash::hash_suite_from_name;
-// use risc0_groth16::ProofJson;
 use risc0_zkvm::{
     get_prover_server, ProverOpts, ReceiptClaim, SuccinctReceipt, SuccinctReceiptVerifierParameters,
 };
@@ -40,7 +38,7 @@ pub fn stark_to_succinct(
     }
     let tmp_dir = tempdir().unwrap();
     let work_dir = std::env::var("RISC0_WORK_DIR");
-    let proof_type = std::env::var("PROOF_TYPE").unwrap_or("test-groth16".to_string());
+    let proof_type = std::env::var("PROOF_TYPE").unwrap_or("groth16".to_string());
     let work_dir = work_dir.as_ref().map(Path::new).unwrap_or(tmp_dir.path());
     let identity_p254_seal_bytes = ident_receipt.get_seal_bytes();
     std::fs::write(
@@ -164,10 +162,15 @@ pub fn to_decimal(s: &str) -> Option<String> {
 
 fn main() {
     initialize_logging();
+    let rpc_user = env::var("RPC_USER").unwrap();
+    let rpc_password = env::var("RPC_PASSWORD").unwrap();
+    let rpc_url = env::var("RPC_URL").unwrap();
 
+    let auth = bitcoincore_rpc::Auth::UserPass(rpc_user, rpc_password);
+    let rpc = bitcoincore_rpc::Client::new(&rpc_url, auth).unwrap();
     // No need to include journal and the METHOD_ID, they are included in the receipt.
     // pow_receipt is the SuccinctReceipt of the PoW.
-    let (pow_receipt, pow_journal, _pow_image_id) = calculate_pow(None, None, 50, None);
+    let (pow_receipt, pow_journal, _pow_image_id) = calculate_pow(&rpc, None, None, 50, Some(99), Some(20), 2);
 
     // blake3_digest is the journal digest of the verify_stark guest.
     // verify_stark_receipt is the SuccinctReceipt of the verify_stark guest.
