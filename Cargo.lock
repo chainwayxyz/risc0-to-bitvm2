@@ -475,6 +475,7 @@ dependencies = [
  "crypto-bigint",
  "hex",
  "hex-literal",
+ "risc0-zkvm",
  "sha2",
 ]
 
