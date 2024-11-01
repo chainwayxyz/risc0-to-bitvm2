@@ -21,7 +21,7 @@ const BLOCKS_PER_EPOCH: u32 = 2016;
 pub struct BlockHeader {
     pub version: i32,
     pub prev_block_hash: [u8; 32], // The hash of the previous block in little endian form
-    pub merkle_root: [u8; 32],     // The Merkle root of the block's transactions in little endian form
+    pub merkle_root: [u8; 32], // The Merkle root of the block's transactions in little endian form
     pub time: u32,
     pub bits: u32,
     pub nonce: u32,
@@ -126,13 +126,11 @@ fn calculate_new_difficulty(
 }
 
 fn check_hash_valid(hash: [u8; 32], target_bytes: [u8; 32]) {
-    let mut target_bytes = target_bytes;
-    target_bytes.reverse();
     for i in (0..32).rev() {
-        if hash[i] < target_bytes[i] {
+        if hash[i] < target_bytes[32 - i] {
             // The hash is valid because a byte in hash is less than the corresponding byte in target
             return;
-        } else if hash[i] > target_bytes[i] {
+        } else if hash[i] > target_bytes[32 - i] {
             // The hash is invalid because a byte in hash is greater than the corresponding byte in target
             panic!("Hash is not valid");
         }
@@ -238,9 +236,6 @@ pub fn header_chain_circuit(guest: &impl ZkvmGuest) {
     }
 
     chain_state.total_work = total_work.to_be_bytes();
-
-    println!("Final chain state: {:#?}", chain_state);
-    println!("Total work: {}", total_work.to_string());
 
     guest.commit(&BlockHeaderCircuitOutput {
         method_id: input.method_id,
