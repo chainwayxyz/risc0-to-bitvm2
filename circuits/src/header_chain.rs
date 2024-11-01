@@ -98,17 +98,44 @@ fn compact_target_to_bytes(nbits: u32) -> [u8; 32] {
     target
 }
 
+// fn target_to_compact(target: [u8; 32]) -> u32 {
+//     let target_u256 = U256::from_le_bytes(target);
+//     let target_bits = target_u256.bits();
+//     let size = (263 - target_bits) / 8;
+//     let mut compact_target = [0u8; 4];
+//     compact_target[3] = (size + 3) as u8;
+//     compact_target[0] = target[31 - size as usize];
+//     compact_target[1] = target[30 - size as usize];
+//     compact_target[2] = target[29 - size as usize];
+//     u32::from_be_bytes(compact_target)
+// }
+
+
 fn target_to_compact(target: [u8; 32]) -> u32 {
-    let target_u256 = U256::from_le_bytes(target);
-    let target_bits = target_u256.bits();
-    let size = (263 - target_bits) / 8;
+    // Find the first non-zero byte from the left
+    let first_non_zero = target.iter().position(|&x| x != 0).unwrap_or(32);
+    
+    // Calculate the size of the significant bytes
+    let size = 32 - first_non_zero;
+    
+    // Prepare compact target bytes
     let mut compact_target = [0u8; 4];
-    compact_target[3] = (size + 3) as u8;
-    compact_target[0] = target[31 - size as usize];
-    compact_target[1] = target[30 - size as usize];
-    compact_target[2] = target[29 - size as usize];
+    compact_target[0] = (size + 3) as u8;
+    
+    // Copy the most significant 3 bytes
+    if size > 0 {
+        compact_target[1] = target[first_non_zero];
+    }
+    if size > 1 {
+        compact_target[2] = target[first_non_zero + 1];
+    }
+    if size > 2 {
+        compact_target[3] = target[first_non_zero + 2];
+    }
+    
     u32::from_be_bytes(compact_target)
 }
+
 
 fn check_hash_valid(hash: [u8; 32], target_bytes: [u8; 32]) {
     // println!("Validating hash...");
@@ -284,14 +311,32 @@ pub fn header_chain_circuit(guest: &impl ZkvmGuest) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use hex_literal::hex;
+
+    const BLOCK_HEADERS: [[u8; 80]; 15] = [
+        hex!("00601d3455bb9fbd966b3ea2dc42d0c22722e4c0c1729fad17210100000000000000000055087fab0c8f3f89f8bcfd4df26c504d81b0a88e04907161838c0c53001af09135edbd64943805175e955e06"),
+        hex!("00a0012054a02827d7a8b75601275a160279a3c5768de4c1c4a702000000000000000000394ddc6a5de035874cfa22167bfe923953187b5a19fbb84e186dea3c78fd871c9bedbd6494380517f5c93c8c"),
+        hex!("00a00127470972473293f6a3514d69d9ede5acc79ef19c236be20000000000000000000035aa0cba25ae1517a257d8c913e24ec0a152fd6a84b7f9ef303626c91cdcd6b287efbd649438051761ba50fb"),
+        hex!("00e0ff3fe80aaef89174e3668cde4cefecae739cd2f337251e12050000000000000000004ed17162f118bd27ae283be8dabe8afe7583bd353087e2eb712c48e3c3240c3ea3efbd64943805178e55bb2f"),
+        hex!("00006020f9dd40733234ec3084fa55ae955d2e95f63db75382b4030000000000000000006f440ea93df1e46fa47a6135ce1661cbdb80e703e4cfb6d2c0bcf49ea50f2a1530f5bd64943805175d3a7efb"),
+        hex!("0040f526ba869c2271583b645767c3bc4acee3f4a5a1ac727d07050000000000000000006ce5ff483f5e9fe028725bd30196a064a761b3ea831e5b81cf1473d5aa11810efbf6bd64943805174c75b45d"),
+        hex!("0000c0204d770ec7842342bcfebba4447545383c639294a6c10c0500000000000000000059f61d610ef6cbcc1d05dec4ebc5e744c62dc975c4256c5f95833d350303c05521fabd64943805172b8e799e"),
+        hex!("00400020d9ea5216f276b3f623834e8db837f8b41a8afbda6e8800000000000000000000d5dea9ae25f7f8e6d66064b21c7f5d1481d08d162658785fde59716b1bf98ff50505be6494380517a33ee2b0"),
+        hex!("0060262ebabd5319d7013811214809650a635c974444813935b203000000000000000000a0ab544e5055c443256debb20e85f8ded28f746436a57c00e914b9fd02ff058bcf07be64943805172436ed21"),
+        hex!("00000020455bd24740ceb627a3c41c3cecaf097b45779719b0d40400000000000000000043ad55fc5619dd8f2edd7d18212d176cdb6aa2152f12addf9d38c9c29be0da60030bbe649438051704743edc"),
+        hex!("00e0ff27d53e9a409bf8ce3054862f76d926437c1b1a84ce1ac0010000000000000000004fceebb8a6cee0eaba389e462ae6bb89a8e6dd5396eeba89dc5907ff51112e21760dbe64943805174bd6f6f6"),
+        hex!("00e0ff3ff9d1af6c7009b9974b4d838a2505bc882a6333f92500030000000000000000002dff4798432eb3beaf3e5b7c7ca318c1b451ba05c560473b6b974138ac73a82f2b0ebe6494380517d26b2853"),
+        hex!("00403a31ee9197174b65726fa7d78fe8b547c024519642009b4f0100000000000000000025f09dbf49cabe174066ebc2d5329211bd994a2b645e4086cadc5a2bbe7cac687e0ebe64943805171f930c95"),
+        hex!("0000eb2f06d50bd6ead9973ec74d9f5d77aa9cc6262a497b7ef5040000000000000000004918ae9062a90bfc4c2befca6eb0569c86b53f20bfae39c14d56052eef74f39e2110be64943805176269f908"),
+        hex!("00a0002049b01d8eea4b9d88fabd6a9633699c579145a8ddc91205000000000000000000368d0d166ae485674d0b794a8e2e2f4e94ac1e5b6d56612b3d725bc793f523514712be6494380517860d95e4")
+    ];
 
     #[test]
     fn test_block_hash_calculation() {
-        let merkle_root: [u8; 32] =
-            hex::decode("3ba3edfd7a7b12b27ac72c3e67768f617fc81bc3888a51323a9fb8aa4b1e5e4a")
-                .unwrap()
-                .try_into()
-                .unwrap();
+        let merkle_root = hex!("3ba3edfd7a7b12b27ac72c3e67768f617fc81bc3888a51323a9fb8aa4b1e5e4a");
+        let expected_block_hash =
+            hex!("6fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d6190000000000");
+
         let block_header = BlockHeader {
             version: 1,
             prev_block_hash: [0u8; 32],
@@ -301,12 +346,75 @@ mod tests {
             nonce: 2083236893,
         };
 
-        let expected_block_hash: [u8; 32] =
-            hex::decode("6fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d6190000000000")
-                .unwrap()
-                .try_into()
-                .unwrap();
         let block_hash = block_header.compute_block_hash();
         assert_eq!(block_hash, expected_block_hash);
+    }
+
+    #[test]
+    fn test_15_block_hash_calculation() {
+        let block_headers = BLOCK_HEADERS
+            .iter()
+            .map(|header| BlockHeader::try_from_slice(header).unwrap())
+            .collect::<Vec<BlockHeader>>();
+
+        for i in 0..block_headers.len() - 1 {
+            let block_hash = block_headers[i].compute_block_hash();
+            let next_block = &block_headers[i + 1];
+            assert_eq!(block_hash, next_block.prev_block_hash);
+        }
+    }
+
+    #[test]
+    fn test_median() {
+        let arr = [3, 7, 2, 10, 1, 5, 9, 4, 8, 6, 11];
+        assert_eq!(median(arr), 6);
+    }
+
+    #[test]
+    fn test_timestamp_checks() {
+        let block_headers = BLOCK_HEADERS
+            .iter()
+            .map(|header| BlockHeader::try_from_slice(header).unwrap())
+            .collect::<Vec<BlockHeader>>();
+
+        let first_11_timestamps = block_headers[..11]
+            .iter()
+            .map(|header| header.time)
+            .collect::<Vec<u32>>();
+
+        validate_timestamp(
+            block_headers[11].time,
+            first_11_timestamps.clone().try_into().unwrap(),
+        );
+
+        // The second validation is expected to panic
+        let result = std::panic::catch_unwind(|| {
+            validate_timestamp(
+                block_headers[1].time,
+                first_11_timestamps.try_into().unwrap(),
+            );
+        });
+
+        assert!(
+            result.is_err(),
+            "Expected the second validation to panic, but it did not."
+        );
+    }
+
+    #[test]
+    fn test_target_conversion() {
+        let block_headers = BLOCK_HEADERS
+            .iter()
+            .map(|header| BlockHeader::try_from_slice(header).unwrap())
+            .collect::<Vec<BlockHeader>>();
+
+        for header in block_headers {
+            let compact_target = compact_target_to_bytes(header.bits);
+            let nbits = target_to_compact(compact_target);
+            println!("Original bits: {:?}", header.bits);
+            println!("Converted bits: {:?}", nbits);
+            println!("compact_target: {:?}", compact_target);
+            assert_eq!(nbits, header.bits);
+        }
     }
 }

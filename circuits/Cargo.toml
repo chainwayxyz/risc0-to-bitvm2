@@ -14,4 +14,5 @@ crypto-bigint = { git = "https://github.com/risc0/RustCrypto-crypto-bigint", tag
 
 [dev-dependencies]
 hex = "0.4.3"
+hex-literal = "0.4.1"
 
