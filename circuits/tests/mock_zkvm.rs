@@ -29,7 +29,7 @@ impl ZkvmGuest for MockZkvmHost {
         data.journal.extend_from_slice(&value);
     }
 
-    fn verify(&self, _method_id: [u32; 8], _journal: &[u32]) {}
+    fn verify<T: borsh::BorshSerialize>(&self, _method_id: [u32; 8], _journal: &T) {}
 }
 
 impl ZkvmHost for MockZkvmHost {

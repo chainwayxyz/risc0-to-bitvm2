@@ -179,14 +179,7 @@ pub fn header_chain_circuit(guest: &impl ZkvmGuest) {
         },
         HeaderChainPrevProofType::PrevProof(prev_proof) => {
             assert_eq!(prev_proof.method_id, input.method_id);
-
-            let prev_proof_serialized = borsh::to_vec(&prev_proof).unwrap();
-            let mut prev_proof_bytes = [0u32; 148];
-            for i in 0..148 {
-                prev_proof_bytes[i] = prev_proof_serialized[i] as u32;
-            }
-
-            guest.verify(input.method_id, &prev_proof_bytes);
+            guest.verify(input.method_id, &prev_proof);
             prev_proof.chain_state
         }
     };

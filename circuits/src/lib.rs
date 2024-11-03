@@ -1,5 +1,7 @@
+use std::io::Write;
+
 use borsh::BorshDeserialize;
-use risc0_zkvm::guest::env::{self, Write};
+use risc0_zkvm::guest::env::{self};
 
 pub mod header_chain;
 pub use risc0_zkvm;
@@ -7,7 +9,7 @@ pub use risc0_zkvm;
 pub trait ZkvmGuest {
     fn read_from_host<T: borsh::BorshDeserialize>(&self) -> T;
     fn commit<T: borsh::BorshSerialize>(&self, item: &T);
-    fn verify(&self, method_id: [u32; 8], journal: &[u32]);
+    fn verify<T: borsh::BorshSerialize>(&self, method_id: [u32; 8], journal: &T);
 }
 
 #[derive(Debug)]
@@ -37,17 +39,18 @@ impl Risc0Guest {
 impl ZkvmGuest for Risc0Guest {
     fn read_from_host<T: borsh::BorshDeserialize>(&self) -> T {
         let mut reader = env::stdin();
-        BorshDeserialize::deserialize_reader(&mut reader).expect("Failed to deserialize input from host")
+        BorshDeserialize::deserialize_reader(&mut reader)
+            .expect("Failed to deserialize input from host")
     }
 
     fn commit<T: borsh::BorshSerialize>(&self, item: &T) {
         // use risc0_zkvm::guest::env::Write as _;
         let buf = borsh::to_vec(item).expect("Serialization to vec is infallible");
         let mut journal = env::journal();
-        journal.write_slice(&buf);
+        journal.write_all(&buf).unwrap();
     }
 
-    fn verify(&self, method_id: [u32; 8], journal: &[u32]) {
-        env::verify(method_id, journal).unwrap();
+    fn verify<T: borsh::BorshSerialize>(&self, method_id: [u32; 8], output: &T) {
+        env::verify(method_id, &borsh::to_vec(output).unwrap()).unwrap();
     }
 }
