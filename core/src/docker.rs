@@ -12,9 +12,9 @@ use tempfile::tempdir;
 
 
 pub fn stark_to_succinct(
-    ident_receipt: SuccinctReceipt<ReceiptClaim>,
+    ident_receipt: &SuccinctReceipt<ReceiptClaim>,
     journal: &[u8],
-    verify_stark_method_id: &[u32; 8],
+    verify_stark_method_id: &[u32],
 ) {
     let mut pre_state_bits: Vec<u8> = Vec::new();
     for item in verify_stark_method_id.iter().take(8) {

@@ -94,6 +94,7 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
+    use docker::stark_to_succinct;
     use risc0_zkvm::compute_image_id;
 
     use super::*;
@@ -101,11 +102,10 @@ mod tests {
     #[test]
     fn test_final_circuit() {
         let final_circuit_elf = include_bytes!("../../target/riscv-guest/riscv32im-risc0-zkvm-elf/docker/final_guest/final-guest");
-        let header_chain_circuit_elf = include_bytes!("../../target/riscv-guest/riscv32im-risc0-zkvm-elf/docker/header_chain_guest/header-chain-guest");
+        let final_circuit_id= compute_image_id(final_circuit_elf).unwrap();
         let final_proof = include_bytes!("../../first_10.bin");
 
         println!("final circuit id: {}",compute_image_id(final_circuit_elf).unwrap());
-        println!("header chain circuit id: {}",compute_image_id(header_chain_circuit_elf).unwrap());
 
         let receipt: Receipt = Receipt::try_from_slice(final_proof).unwrap();
 
@@ -123,7 +123,8 @@ mod tests {
             .prove_with_opts(env, final_circuit_elf, &ProverOpts::succinct())
             .unwrap()
             .receipt;
-
+        let succinct_receipt = receipt.inner.succinct().unwrap();
         println!("Journal: {:#?}", receipt.journal);
+        stark_to_succinct(succinct_receipt, &receipt.journal.bytes, final_circuit_id.as_words());
     }
 }
