@@ -108,7 +108,6 @@ pub fn stark_to_succinct(
     let a1_dec = to_decimal(&a1_str).unwrap();
     println!("Succinct control root a0 dec: {:?}", a0_dec);
     println!("Succinct control root a1 dec: {:?}", a1_dec);
-    
 
     let id_bn254_fr_bits: Vec<String> = ident_receipt
         .control_id
