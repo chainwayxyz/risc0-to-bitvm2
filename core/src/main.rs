@@ -9,6 +9,8 @@ use header_chain_circuit::{HEADER_CHAIN_GUEST_ELF, HEADER_CHAIN_GUEST_ID};
 use risc0_zkvm::{ProverOpts, Receipt};
 use std::{env, fs};
 
+pub mod docker;
+
 fn main() {
     // Parse command-line arguments
     let args: Vec<String> = env::args().collect();

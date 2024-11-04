@@ -8,3 +8,10 @@ circuits = { path = "../circuits" }
 header-chain-circuit = { path = "../guests/header-chain" }
 borsh = {version = "1.5.1", features = ["derive"] }
 risc0-zkvm = {version = "1.1.2", default-features = false, features = ["prove"]}
+tempfile.workspace = true
+risc0-groth16.workspace = true
+hex.workspace = true
+crypto-bigint.workspace = true
+serde_json.workspace = true
+num-bigint.workspace = true
+num-traits.workspace = true
