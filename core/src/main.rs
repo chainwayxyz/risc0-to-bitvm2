@@ -5,16 +5,14 @@ use circuits::{
     },
     risc0_zkvm::{default_prover, ExecutorEnv},
 };
-use docker::stark_to_succinct;
+
 use header_chain_circuit::{HEADER_CHAIN_GUEST_ELF, HEADER_CHAIN_GUEST_ID};
-use risc0_zkvm::{compute_image_id, ProverOpts, Receipt, ReceiptClaim};
+use risc0_zkvm::{recursion::MerkleGroup, ProverOpts, Receipt, SuccinctReceiptVerifierParameters};
 use std::{env, fs};
 
 pub mod docker;
 
 fn main() {
-    let final_circuit_elf = include_bytes!("../../target/riscv-guest/riscv32im-risc0-zkvm-elf/docker/final_guest/final-guest");
-    let final_circuit_id= compute_image_id(final_circuit_elf).unwrap();
     // Parse command-line arguments
     let args: Vec<String> = env::args().collect();
     if args.len() < 4 {
@@ -40,9 +38,8 @@ fn main() {
         let proof_bytes = fs::read(input_proof).expect("Failed to read input proof file");
         let receipt: Receipt = Receipt::try_from_slice(&proof_bytes).unwrap();
         Some(receipt)
-        // let prev_output = BlockHeaderCircuitOutput::try_from_slice(&receipt.journal.bytes).unwrap();
-        // HeaderChainPrevProofType::PrevProof(prev_output)
     };
+
     let mut start = 0;
     let prev_proof = match prev_receipt.clone() {
         Some(receipt) => {
@@ -61,13 +58,12 @@ fn main() {
         block_headers: headers[start..start + batch_size].to_vec(),
     };
 
+    // Build ENV
     let mut binding = ExecutorEnv::builder();
     let mut env = binding.write_slice(&borsh::to_vec(&input).unwrap());
-
     if let Some(receipt) = prev_receipt {
         env = env.add_assumption(receipt);
     }
-
     let env = env.build().unwrap();
 
     // Obtain the default prover.
@@ -81,12 +77,8 @@ fn main() {
 
     // Extract journal of receipt
     let output = BlockHeaderCircuitOutput::try_from_slice(&receipt.journal.bytes).unwrap();
-    println!("output method id: {:#?}", output.method_id);
 
-    // println!("Total work: {:#?}", output);
-    println!("Method id: {:#?}", HEADER_CHAIN_GUEST_ID);
-    println!("Journal: {:#?}", receipt.journal);
-
+    println!("Output: {:#?}", output.method_id);
 
     // Save the receipt to the specified output file path
     let receipt_bytes = borsh::to_vec(&receipt).unwrap();
@@ -94,21 +86,42 @@ fn main() {
     println!("Receipt saved to {}", output_file_path);
 }
 
+pub fn calculate_succinct_output_prefix(method_id: [u32; 8]) -> [u8; 32] {
+    let succinct_verifier_params = SuccinctReceiptVerifierParameters::default();
+    println!("Succinct verifier params: {:?}", succinct_verifier_params);
+    let succinct_control_root = succinct_verifier_params.control_root;
+
+
+    let mut pre_state_bits: Vec<u8> = Vec::new();
+    for item in method_id.iter().take(8) {
+        for j in 0..4 {
+            for k in 0..8 {
+                pre_state_bits.push((item >> (8 * j + 7 - k)) as u8 & 1);
+            }
+        }
+    };
+
+    todo!()
+}
 
 #[cfg(test)]
 mod tests {
     use docker::stark_to_succinct;
-    use risc0_zkvm::{compute_image_id, ReceiptClaim};
+    use risc0_zkvm::compute_image_id;
 
     use super::*;
-    #[ignore = "This is to only test final proof generation"]
+    // #[ignore = "This is to only test final proof generation"]
     #[test]
     fn test_final_circuit() {
-        let final_circuit_elf = include_bytes!("../../target/riscv-guest/riscv32im-risc0-zkvm-elf/docker/final_guest/final-guest");
-        let final_circuit_id= compute_image_id(final_circuit_elf).unwrap();
+        let final_circuit_elf = include_bytes!(
+            "../../target/riscv-guest/riscv32im-risc0-zkvm-elf/docker/final_guest/final-guest"
+        );
         let final_proof = include_bytes!("../../first_10.bin");
 
-        println!("final circuit id: {}",compute_image_id(final_circuit_elf).unwrap());
+        println!(
+            "final circuit id: {}",
+            compute_image_id(final_circuit_elf).unwrap()
+        );
 
         let receipt: Receipt = Receipt::try_from_slice(final_proof).unwrap();
 
@@ -126,10 +139,10 @@ mod tests {
             .prove_with_opts(env, final_circuit_elf, &ProverOpts::succinct())
             .unwrap()
             .receipt;
-        let composite_receipt_claim: ReceiptClaim = receipt.claim().unwrap().value().unwrap();
-        // println!("Composite receipt claim post: {:#?}", composite_receipt_claim.post);
-        let succinct_receipt = receipt.inner.succinct().unwrap();
+
+        let succinct_receipt = receipt.inner.succinct().unwrap().clone();
         println!("Journal: {:#?}", receipt.journal);
-        stark_to_succinct(succinct_receipt, &composite_receipt_claim, &receipt.journal.bytes, final_circuit_id.into());
+        let proof = stark_to_succinct(succinct_receipt, &receipt.journal.bytes);
+        print!("Proof: {:#?}", proof);
     }
 }

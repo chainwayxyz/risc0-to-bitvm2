@@ -1,12 +1,10 @@
-use crypto_bigint::U256;
 use hex::ToHex;
 use num_bigint::BigUint;
 use num_traits::Num;
 use risc0_groth16::{to_json, ProofJson, Seal};
 use risc0_zkvm::sha::Digestible;
 use risc0_zkvm::{
-    sha::Digest, MaybePruned, Receipt, ReceiptClaim, SuccinctReceipt,
-    SuccinctReceiptVerifierParameters, SystemState,
+    sha::Digest, ReceiptClaim, SuccinctReceipt, SuccinctReceiptVerifierParameters, SystemState,
 };
 use serde_json::Value;
 use std::{
@@ -18,23 +16,10 @@ use std::{
 
 use tempfile::tempdir;
 
-pub fn stark_to_succinct(
-    succinct_receipt: &SuccinctReceipt<ReceiptClaim>,
-    receipt_claim: &ReceiptClaim,
-    journal: &[u8],
-    verify_stark_method_id: [u32; 8],
-) -> Seal {
-    let ident_receipt = risc0_zkvm::recursion::identity_p254(succinct_receipt).unwrap();
+pub fn stark_to_succinct(succinct_receipt: SuccinctReceipt<ReceiptClaim>, journal: &[u8]) -> Seal {
+    let ident_receipt = risc0_zkvm::recursion::identity_p254(&succinct_receipt).unwrap();
     let identity_p254_seal_bytes = ident_receipt.get_seal_bytes();
-
-    // let pre_state_bits: risc0_zkvm::MaybePruned<SystemState> = receipt_claim.clone().pre;
-    // println!("pre_state_bits: {:?}", pre_state_bits);
-    // let pre_state_digest_bits = pre_state_bits.clone().digest();
-    // println!("pre_state_digest_bits: {:?}", pre_state_digest_bits);
-    // let post_state_bits: risc0_zkvm::MaybePruned<SystemState> = receipt_claim.clone().post;
-    // println!("post_state_bits: {:?}", post_state_bits);
-    // let post_state_digest_bits = post_state_bits.clone().digest();
-    // println!("post_state_digest_bits: {:?}", post_state_digest_bits);
+    let receipt_claim = succinct_receipt.claim.value().unwrap();
 
     // This part is from risc0-groth16
     if !is_x86_architecture() {
@@ -54,16 +39,6 @@ pub fn stark_to_succinct(
     let mut seal_json = Vec::new();
     to_json(&*identity_p254_seal_bytes, &mut seal_json).unwrap();
     std::fs::write(seal_path.clone(), seal_json).unwrap();
-
-    // Add additional fields to our input.json
-    // let pre_state_bits: Vec<String> = verify_stark_method_id
-    //     .iter()
-    //     .flat_map(|item| {
-    //         // Iterate over the bits from most significant (31) to least significant (0)
-    //         (0..32).rev().map(move |n| ((item >> n) & 1).to_string())
-    //     })
-    //     .take(8 * 4) // Take the first 32 bits (8 items * 4 bytes)
-    //     .collect();
 
     let pre_state: risc0_zkvm::MaybePruned<SystemState> = receipt_claim.clone().pre;
     println!("pre_state: {:?}", pre_state);
@@ -108,7 +83,6 @@ pub fn stark_to_succinct(
     let a1_dec = to_decimal(&a1_str).unwrap();
     println!("Succinct control root a0 dec: {:?}", a0_dec);
     println!("Succinct control root a1 dec: {:?}", a1_dec);
-    
 
     let id_bn254_fr_bits: Vec<String> = ident_receipt
         .control_id

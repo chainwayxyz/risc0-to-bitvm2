@@ -45,17 +45,20 @@ RUN git submodule init && \
   FROM dependencies AS builder
   
   WORKDIR /src/
-  COPY circuits/risc0.circom ./proof/circuits/risc0.circom
-  COPY circuits/test_stark_verify.circom ./proof/circuits/test_stark_verify.circom
-  COPY circuits/test_verify_for_guest.circom ./proof/circuits/test_verify_for_guest.circom
-  COPY circuits/blake3_common.circom ./proof/circuits/blake3_common.circom
-  COPY circuits/blake3_compression.circom ./proof/circuits/blake3_compression.circom
+  COPY circuits/stark_verify.circom ./groth16_proof/circuits/stark_verify.circom
+  COPY circuits/verify_for_guest.circom ./groth16_proof/circuits/verify_for_guest.circom
+  COPY circuits/blake3_compression.circom ./groth16_proof/circuits/blake3_compression.circom
+  COPY circuits/blake3_common.circom ./groth16_proof/circuits/blake3_common.circom
+  COPY circuits/risc0.circom ./groth16_proof/circuits/risc0.circom
+
+  # Delete the last line of stark_verify.circom
+  RUN sed -i '$d' ./groth16_proof/circuits/stark_verify.circom
   
   # Build the witness generation
-  RUN (cd proof/circuits; circom --c --r1cs test_verify_for_guest.circom) && \
-    sed -i 's/g++/clang++/' proof/circuits/test_verify_for_guest_cpp/Makefile && \
-    sed -i 's/O3/O0/' proof/circuits/test_verify_for_guest_cpp/Makefile && \
-    (cd proof/circuits/test_verify_for_guest_cpp; make)
+  RUN (cd groth16_proof/circuits; circom --c --r1cs verify_for_guest.circom) && \
+    sed -i 's/g++/clang++/' groth16_proof/circuits/verify_for_guest_cpp/Makefile && \
+    sed -i 's/O3/O0/' groth16_proof/circuits/verify_for_guest_cpp/Makefile && \
+    (cd groth16_proof/circuits/verify_for_guest_cpp; make)
 
 # Create a final clean image with all the dependencies to perform stark->snark
 FROM ubuntu:jammy-20231211.1@sha256:bbf3d1baa208b7649d1d0264ef7d522e1dc0deeeaaf6085bf8e4618867f03494 AS prover
@@ -64,14 +67,14 @@ RUN apt update -qq && \
   apt install -y libsodium23 nodejs npm && \
   npm install -g snarkjs@0.7.3
 
-COPY scripts/test_prover.sh /app/test_prover.sh
+COPY scripts/prover.sh /app/prover.sh
 COPY --from=builder /usr/local/sbin/rapidsnark /usr/local/sbin/rapidsnark
-COPY --from=builder /src/proof/circuits/test_verify_for_guest_cpp/test_verify_for_guest /app/test_verify_for_guest
-COPY --from=builder /src/proof/circuits/test_verify_for_guest_cpp/test_verify_for_guest.dat /app/test_verify_for_guest.dat
-COPY groth16/test_verify_for_guest_final.zkey /app/test_verify_for_guest_final.zkey
+COPY --from=builder /src/groth16_proof/circuits/verify_for_guest_cpp/verify_for_guest /app/verify_for_guest
+COPY --from=builder /src/groth16_proof/circuits/verify_for_guest_cpp/verify_for_guest.dat /app/verify_for_guest.dat
+COPY groth16/verify_for_guest_final.zkey /app/verify_for_guest_final.zkey
 
 WORKDIR /app
-RUN chmod +x test_prover.sh
+RUN chmod +x prover.sh
 RUN ulimit -s unlimited
 
-ENTRYPOINT ["/app/test_prover.sh"]
+ENTRYPOINT ["/app/prover.sh"]
