@@ -7,7 +7,10 @@ use risc0_zkvm::{Receipt, ReceiptClaim, SuccinctReceipt, SuccinctReceiptVerifier
 use serde_json::Value;
 
 use std::{
-    env::consts::ARCH, fs, path::Path, process::{Command, Stdio}
+    env::consts::ARCH,
+    fs,
+    path::Path,
+    process::{Command, Stdio},
 };
 
 use tempfile::tempdir;
@@ -17,12 +20,13 @@ pub fn stark_to_succinct(
     journal: &[u8],
     verify_stark_method_id: &[u32],
 ) -> Seal {
-    // let succinct_receipt: &SuccinctReceipt<ReceiptClaim> = receipt.inner.succinct().unwrap();
     let ident_receipt = risc0_zkvm::recursion::identity_p254(succinct_receipt).unwrap();
     let identity_p254_seal_bytes = ident_receipt.get_seal_bytes();
-    // if !is_x86_architecture() {
-    //     panic!("stark_to_snark is only supported on x86 architecture.")
-    // }
+
+    // This part is from risc0-groth16
+    if !is_x86_architecture() {
+        panic!("stark_to_snark is only supported on x86 architecture.")
+    }
     if !is_docker_installed() {
         panic!("Please install docker first.")
     }
@@ -38,17 +42,15 @@ pub fn stark_to_succinct(
     to_json(&*identity_p254_seal_bytes, &mut seal_json).unwrap();
     std::fs::write(seal_path.clone(), seal_json).unwrap();
 
-    let mut pre_state_bits: Vec<u8> = Vec::new();
-    for item in verify_stark_method_id.iter().take(8) {
-        for j in 0..4 {
-            for k in 0..8 {
-                pre_state_bits.push((item >> (8 * j + 7 - k)) as u8 & 1);
-            }
-        }
-    }
-
-    let journal_hex = hex::encode(journal);
-    println!("Journal hex: {:?}", journal_hex);
+    // Add additional fields to our input.json
+    let pre_state_bits: Vec<String> = verify_stark_method_id
+        .iter()
+        .flat_map(|item| {
+            // Iterate over the bits from most significant (31) to least significant (0)
+            (0..32).rev().map(move |n| ((item >> n) & 1).to_string())
+        })
+        .take(8 * 4) // Take the first 32 bits (8 items * 4 bytes)
+        .collect();
 
     let mut journal_bits = Vec::new();
     for byte in journal {
@@ -57,22 +59,20 @@ pub fn stark_to_succinct(
         }
     }
 
-    let succinct_verifier_params = SuccinctReceiptVerifierParameters::default();
-    println!("Succinct verifier params: {:?}", succinct_verifier_params);
-    let succinct_control_root = succinct_verifier_params.control_root;
-    println!("Succinct control root: {:?}", succinct_control_root);
-    let mut succinct_control_root_bytes: [u8; 32] =
-        succinct_control_root.as_bytes().try_into().unwrap();
-    succinct_control_root_bytes.reverse();
-    let succinct_control_root_bytes: String = succinct_control_root_bytes.encode_hex();
-    let a1_str = succinct_control_root_bytes[0..32].to_string();
-    let a0_str = succinct_control_root_bytes[32..64].to_string();
-    println!("Succinct control root a0: {:?}", a0_str);
-    println!("Succinct control root a1: {:?}", a1_str);
-    let a0_dec = to_decimal(&a0_str).unwrap();
-    let a1_dec = to_decimal(&a1_str).unwrap();
-    println!("Succinct control root a0 dec: {:?}", a0_dec);
-    println!("Succinct control root a1 dec: {:?}", a1_dec);
+    // let journal_bits: Vec<String> = journal_bits.iter().flat_map( |item| (0..8).map(move |n| item.to_string())).collect();
+
+    let control_root: [u8; 32] = SuccinctReceiptVerifierParameters::default()
+        .control_root
+        .as_bytes()
+        .iter()
+        .rev()
+        .cloned()
+        .collect::<Vec<u8>>()
+        .try_into()
+        .expect("Slice conversion failed; expected 32 bytes");
+
+    let a1_str = format!("0x{}", hex::encode(&control_root[0..32]));
+    let a0_str = format!("0x{}", hex::encode(&control_root[32..64]));
 
     let id_bn254_fr_bits = ident_receipt
         .control_id
@@ -80,16 +80,7 @@ pub fn stark_to_succinct(
         .iter()
         .flat_map(|&byte| (0..8).rev().map(move |i| (byte >> i) & 1));
 
-    let mut seal_json: Value = {
-        let file_content = fs::read_to_string(&seal_path).unwrap();
-        serde_json::from_str(&file_content).unwrap()
-    };
-
     let journal_bits_str_vec: Vec<String> = journal_bits
-        .iter()
-        .map(|s| s.to_string())
-        .collect::<Vec<String>>();
-    let pre_state_bits_str_vec = pre_state_bits
         .iter()
         .map(|s| s.to_string())
         .collect::<Vec<String>>();
@@ -98,10 +89,15 @@ pub fn stark_to_succinct(
         .map(|s| s.to_string())
         .collect::<Vec<String>>();
 
+    let mut seal_json: Value = {
+        let file_content = fs::read_to_string(&seal_path).unwrap();
+        serde_json::from_str(&file_content).unwrap()
+    };
+
     seal_json["journal_blake3_digest_bits"] = journal_bits_str_vec.into();
-    seal_json["pre_state_digest_bits"] = pre_state_bits_str_vec.into();
+    seal_json["pre_state_digest_bits"] = pre_state_bits.into();
     seal_json["id_bn254_fr_bits"] = id_bn254_fr_bits_str_vec.into();
-    seal_json["control_root"] = vec![a0_dec, a1_dec].into();
+    seal_json["control_root"] = vec![a0_str, a1_str].into();
     std::fs::write(seal_path, serde_json::to_string_pretty(&seal_json).unwrap()).unwrap();
 
     println!("Starting proving");
@@ -128,31 +124,6 @@ pub fn stark_to_succinct(
     let contents = std::fs::read_to_string(proof_path).unwrap();
     let proof_json: ProofJson = serde_json::from_str(&contents).unwrap();
     proof_json.try_into().unwrap()
-
-}
-
-pub fn bits_to_num(len: usize, bits: &[u8]) -> U256 {
-    assert!(len <= 252);
-    assert!(bits.len() == len);
-
-    let mut num_lo: u128 = 0;
-    let mut num_hi: u128 = 0;
-
-    for (i, &bit) in bits.iter().enumerate() {
-        if i < 128 {
-            num_lo |= (bit as u128) << i;
-        } else {
-            num_hi |= (bit as u128) << (i - 128);
-        }
-    }
-
-    let u256_lo = U256::from(num_lo);
-    if len > 128 {
-        let u256_hi = U256::from(num_hi) << 128;
-        u256_hi.wrapping_add(&u256_lo)
-    } else {
-        u256_lo
-    }
 }
 
 pub fn to_decimal(s: &str) -> Option<String> {
