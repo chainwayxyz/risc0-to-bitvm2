@@ -4,7 +4,7 @@ include "../../circomlib/circuits/sha256/sha256.circom";
 include "../../circomlib/circuits/bitify.circom";
 include "risc0.circom";
 include "blake3_compression.circom";
-include "stark_verify.circom";
+include "test_stark_verify.circom";
 
 template Blake3 () {
     signal input inp[16]; // 16 32-bit words
@@ -161,11 +161,28 @@ template VerifyForGuest() {
     for (var i = 0; i < 256; i++) {
         claim.journal_bits_in[i] <== journal_digest_bits[i];
     }
+
+    log("journal_digest_bits");
+    for (var i = 0; i < 256; i++) {
+        log(journal_digest_bits[i]);
+    }
+
     for (var i = 0; i < 256; i++) {
         claim.pre_state_digest_bits[i] <== pre_state_digest_bits[i];
     }
+
+    log("pre_state_digest_bits");
+    for (var i = 0; i < 256; i++) {
+        log(pre_state_digest_bits[i]);
+    }
+
     for (var i = 0; i < 256; i++) {
         claim.post_state_digest_bits[i] <== post_state_digest_bits[i];
+    }
+
+    log("post_state_digest_bits");
+    for (var i = 0; i < 256; i++) {
+        log(post_state_digest_bits[i]);
     }
 
 
@@ -184,7 +201,11 @@ template VerifyForGuest() {
     stark_verifier.out[3] === claim.out[1];
     stark_verifier.codeRoot === id_bn254_fr_b2n.out;
 
-
+    log("control_root[0]", control_root[0]);
+    log("control_root[1]", control_root[1]);
+    log("claim.out[0]", claim.out[0]);
+    log("claim.out[1]", claim.out[1]);
+    log("id_bn254_fr_b2n.out", id_bn254_fr_b2n.out);
 
     // PREPARE FINAL BLAKE3 DIGEST
 
