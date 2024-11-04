@@ -19,13 +19,12 @@ use std::{
 use tempfile::tempdir;
 
 pub fn stark_to_succinct(
-    succinct_receipt: &SuccinctReceipt<ReceiptClaim>,
-    receipt_claim: &ReceiptClaim,
+    succinct_receipt: SuccinctReceipt<ReceiptClaim>,
     journal: &[u8],
-    verify_stark_method_id: [u32; 8],
 ) -> Seal {
-    let ident_receipt = risc0_zkvm::recursion::identity_p254(succinct_receipt).unwrap();
+    let ident_receipt = risc0_zkvm::recursion::identity_p254(&succinct_receipt).unwrap();
     let identity_p254_seal_bytes = ident_receipt.get_seal_bytes();
+    let receipt_claim = succinct_receipt.claim.value().unwrap();
 
     // let pre_state_bits: risc0_zkvm::MaybePruned<SystemState> = receipt_claim.clone().pre;
     // println!("pre_state_bits: {:?}", pre_state_bits);
@@ -37,9 +36,9 @@ pub fn stark_to_succinct(
     // println!("post_state_digest_bits: {:?}", post_state_digest_bits);
 
     // This part is from risc0-groth16
-    if !is_x86_architecture() {
-        panic!("stark_to_snark is only supported on x86 architecture.")
-    }
+    // if !is_x86_architecture() {
+    //     panic!("stark_to_snark is only supported on x86 architecture.")
+    // }
     if !is_docker_installed() {
         panic!("Please install docker first.")
     }

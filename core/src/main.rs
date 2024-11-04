@@ -86,13 +86,17 @@ fn main() {
     println!("Receipt saved to {}", output_file_path);
 }
 
+pub fn calculate_succinct_output_prefix(method_id: [u32; 8]) -> [u8; 32] {
+    todo!()
+}
+
 #[cfg(test)]
 mod tests {
     use docker::stark_to_succinct;
     use risc0_zkvm::{compute_image_id, ReceiptClaim};
 
     use super::*;
-    #[ignore = "This is to only test final proof generation"]
+    // #[ignore = "This is to only test final proof generation"]
     #[test]
     fn test_final_circuit() {
         let final_circuit_elf = include_bytes!(
@@ -122,15 +126,12 @@ mod tests {
             .prove_with_opts(env, final_circuit_elf, &ProverOpts::succinct())
             .unwrap()
             .receipt;
-        let composite_receipt_claim: ReceiptClaim = receipt.claim().unwrap().value().unwrap();
-        // println!("Composite receipt claim post: {:#?}", composite_receipt_claim.post);
-        let succinct_receipt = receipt.inner.succinct().unwrap();
+
+        let succinct_receipt = receipt.inner.succinct().unwrap().clone();
         println!("Journal: {:#?}", receipt.journal);
         stark_to_succinct(
             succinct_receipt,
-            &composite_receipt_claim,
             &receipt.journal.bytes,
-            final_circuit_id.into(),
         );
     }
 }
