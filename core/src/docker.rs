@@ -111,11 +111,6 @@ pub fn stark_to_succinct(
     proof_json.try_into().unwrap()
 }
 
-pub fn to_decimal(s: &str) -> Option<String> {
-    let int = BigUint::from_str_radix(s, 16).ok();
-    int.map(|n| n.to_str_radix(10))
-}
-
 fn is_docker_installed() -> bool {
     Command::new("docker")
         .arg("--version")
