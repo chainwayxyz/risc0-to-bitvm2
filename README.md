@@ -17,23 +17,23 @@ mkdir -p work_dir
 ### Download the setup parameters:
 For either `test-groth16` or `groth16` proof:
 ```
-mkdir -p ./proof/groth16
+mkdir -p ./groth16_proof/groth16
 ```
 
 For `test-groth16` proof:
 ```
- wget -O ./proof/groth16/pot19.ptau https://storage.googleapis.com/zkevm/ptau/powersOfTau28_hez_final_19.ptau
+ wget -O ./groth16_proof/groth16/pot19.ptau https://storage.googleapis.com/zkevm/ptau/powersOfTau28_hez_final_19.ptau
 ```
 
 For `groth16` proof:
 ```
- wget -O ./proof/groth16/pot23.ptau https://storage.googleapis.com/zkevm/ptau/powersOfTau28_hez_final_23.ptau
+ wget -O ./groth16_proof/groth16/pot23.ptau https://storage.googleapis.com/zkevm/ptau/powersOfTau28_hez_final_23.ptau
 ```
 
 For `test-fflonk` proof:
 ```
-mkdir -p ./proof/fflonk
- wget -O ./proof/fflonk/pot24.ptau https://storage.googleapis.com/zkevm/ptau/powersOfTau28_hez_final_24.ptau
+mkdir -p ./groth16_proof/fflonk
+ wget -O ./groth16_proof/fflonk/pot24.ptau https://storage.googleapis.com/zkevm/ptau/powersOfTau28_hez_final_24.ptau
 ```
 
 ### Setup:
@@ -45,7 +45,7 @@ cd proof
 To run the ceremony for `test-groth16` proof:
 ```
 docker build -f docker/test_ceremony.Dockerfile . -t test-snark-ceremony
-docker run --rm -v $(pwd)/groth16:/test_ceremony/proof/groth16 test-snark-ceremony
+docker run --rm -v $(pwd)/groth16:/test_ceremony/groth16_proof/groth16 test-snark-ceremony
 ```
 
 To build the prover:
@@ -58,7 +58,7 @@ For `groth16` proof, use the same commands without `test` prefix.
 To run the preprocessing for `test-fflonk` proof:
 ```
 docker build -f docker/test_fflonk_pp.Dockerfile . -t test-fflonk-preprocess
-docker run --rm -v $(pwd)/fflonk:/test_preprocess/proof/fflonk test-fflonk-preprocess
+docker run --rm -v $(pwd)/fflonk:/test_preprocess/groth16_proof/fflonk test-fflonk-preprocess
 ```
 
 To build the prover:
