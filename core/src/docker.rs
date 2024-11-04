@@ -71,8 +71,8 @@ pub fn stark_to_succinct(
         .try_into()
         .expect("Slice conversion failed; expected 32 bytes");
 
-    let a1_str = format!("0x{}", hex::encode(&control_root[0..32]));
-    let a0_str = format!("0x{}", hex::encode(&control_root[32..64]));
+    let a1_str = format!("0x{}", hex::encode(&control_root[0..16]));
+    let a0_str = format!("0x{}", hex::encode(&control_root[16..32]));
 
     let id_bn254_fr_bits = ident_receipt
         .control_id
