@@ -24,9 +24,9 @@ pub fn stark_to_succinct(
     let identity_p254_seal_bytes = ident_receipt.get_seal_bytes();
 
     // This part is from risc0-groth16
-    if !is_x86_architecture() {
-        panic!("stark_to_snark is only supported on x86 architecture.")
-    }
+    // if !is_x86_architecture() {
+    //     panic!("stark_to_snark is only supported on x86 architecture.")
+    // }
     if !is_docker_installed() {
         panic!("Please install docker first.")
     }
@@ -52,14 +52,10 @@ pub fn stark_to_succinct(
         .take(8 * 4) // Take the first 32 bits (8 items * 4 bytes)
         .collect();
 
-    let mut journal_bits = Vec::new();
-    for byte in journal {
-        for i in 0..8 {
-            journal_bits.push((byte >> (7 - i)) & 1);
-        }
-    }
-
-    // let journal_bits: Vec<String> = journal_bits.iter().flat_map( |item| (0..8).map(move |n| item.to_string())).collect();
+    let journal_bits: Vec<String> = journal
+        .iter()
+        .flat_map(|&byte| (0..8).map(move |i| ((byte >> (7 - i)) & 1).to_string()))
+        .collect();
 
     let control_root: [u8; 32] = SuccinctReceiptVerifierParameters::default()
         .control_root
@@ -74,33 +70,23 @@ pub fn stark_to_succinct(
     let a1_str = format!("0x{}", hex::encode(&control_root[0..16]));
     let a0_str = format!("0x{}", hex::encode(&control_root[16..32]));
 
-    let id_bn254_fr_bits = ident_receipt
+    let id_bn254_fr_bits: Vec<String> = ident_receipt
         .control_id
         .as_bytes()
         .iter()
-        .flat_map(|&byte| (0..8).rev().map(move |i| (byte >> i) & 1));
-
-    let journal_bits_str_vec: Vec<String> = journal_bits
-        .iter()
-        .map(|s| s.to_string())
-        .collect::<Vec<String>>();
-
-    let id_bn254_fr_bits_str_vec = id_bn254_fr_bits
-        .map(|s| s.to_string())
-        .collect::<Vec<String>>();
+        .flat_map(|&byte| (0..8).rev().map(move |i| ((byte >> i) & 1).to_string()))
+        .collect();
 
     let mut seal_json: Value = {
         let file_content = fs::read_to_string(&seal_path).unwrap();
         serde_json::from_str(&file_content).unwrap()
     };
 
-    seal_json["journal_blake3_digest_bits"] = journal_bits_str_vec.into();
+    seal_json["journal_blake3_digest_bits"] = journal_bits.into();
     seal_json["pre_state_digest_bits"] = pre_state_bits.into();
-    seal_json["id_bn254_fr_bits"] = id_bn254_fr_bits_str_vec.into();
+    seal_json["id_bn254_fr_bits"] = id_bn254_fr_bits.into();
     seal_json["control_root"] = vec![a0_str, a1_str].into();
     std::fs::write(seal_path, serde_json::to_string_pretty(&seal_json).unwrap()).unwrap();
-
-    println!("Starting proving");
 
     let output = Command::new("docker")
         .arg("run")
@@ -112,7 +98,6 @@ pub fn stark_to_succinct(
         .stderr(Stdio::piped())
         .output()
         .unwrap();
-    println!("Output: {:?}", output);
 
     if !output.status.success() {
         eprintln!(
