@@ -165,30 +165,12 @@ pub struct HeaderChainCircuitInput {
     pub block_headers: Vec<BlockHeader>,
 }
 
-pub fn header_chain_circuit(guest: &impl ZkvmGuest) {
-    let input: HeaderChainCircuitInput = guest.read_from_host();
-
-    let mut chain_state = match input.prev_proof {
-        HeaderChainPrevProofType::GenesisBlock => ChainState {
-            block_height: u32::MAX,
-            total_work: [0u8; 32],
-            best_block_hash: [0u8; 32],
-            current_target_bits: MAX_BITS,
-            epoch_start_time: 0,
-            prev_11_timestamps: [0u32; 11],
-        },
-        HeaderChainPrevProofType::PrevProof(prev_proof) => {
-            assert_eq!(prev_proof.method_id, input.method_id);
-            guest.verify(input.method_id, &prev_proof);
-            prev_proof.chain_state
-        }
-    };
-
+pub fn apply_blocks(chain_state: &mut ChainState, block_headers: Vec<BlockHeader>) {
     let mut current_target_bytes = bits_to_target(chain_state.current_target_bits);
     let mut current_work_add = calculate_work(&current_target_bytes);
     let mut total_work = U256::from_be_bytes(chain_state.total_work);
 
-    for block_header in input.block_headers {
+    for block_header in block_headers {
         // calculate the new block hash
         let new_block_hash = block_header.compute_block_hash();
 
@@ -229,6 +211,28 @@ pub fn header_chain_circuit(guest: &impl ZkvmGuest) {
     }
 
     chain_state.total_work = total_work.to_be_bytes();
+}
+
+pub fn header_chain_circuit(guest: &impl ZkvmGuest) {
+    let input: HeaderChainCircuitInput = guest.read_from_host();
+
+    let mut chain_state = match input.prev_proof {
+        HeaderChainPrevProofType::GenesisBlock => ChainState {
+            block_height: u32::MAX,
+            total_work: [0u8; 32],
+            best_block_hash: [0u8; 32],
+            current_target_bits: MAX_BITS,
+            epoch_start_time: 0,
+            prev_11_timestamps: [0u32; 11],
+        },
+        HeaderChainPrevProofType::PrevProof(prev_proof) => {
+            assert_eq!(prev_proof.method_id, input.method_id);
+            guest.verify(input.method_id, &prev_proof);
+            prev_proof.chain_state
+        }
+    };
+
+    apply_blocks(&mut chain_state, input.block_headers);
 
     guest.commit(&BlockHeaderCircuitOutput {
         method_id: input.method_id,
@@ -236,15 +240,14 @@ pub fn header_chain_circuit(guest: &impl ZkvmGuest) {
     });
 }
 
-// only compiled with final-circuit feature flag
-#[cfg(feature = "final-circuit")]
+const HEADER_CHAIN_GUEST_ID: [u32; 8] = [
+    785726750, 2319694325, 2467124832, 3708080889, 1169398785, 2304475553, 3312010205, 540991776,
+];
+
 pub fn final_circuit(guest: &impl ZkvmGuest) {
     let header_chain_circuit_output = guest.read_from_host::<BlockHeaderCircuitOutput>();
-    let header_chain_circuit_method_id: [u32; 8] = [
-        1740777564, 1806149210, 1477761109, 3327280220, 2783810329, 4076456697, 1244465978,
-        368913980,
-    ];
-    guest.verify(header_chain_circuit_method_id, &header_chain_circuit_output);
+
+    guest.verify(HEADER_CHAIN_GUEST_ID, &header_chain_circuit_output);
 
     let mut hasher = blake3::Hasher::new();
 

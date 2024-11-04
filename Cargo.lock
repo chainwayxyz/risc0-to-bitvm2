@@ -869,6 +869,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "final-circuit"
+version = "0.1.0"
+dependencies = [
+ "risc0-build",
+]
+
+[[package]]
 name = "flate2"
 version = "1.0.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"

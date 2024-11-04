@@ -4,12 +4,11 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+risc0-zkvm = {version = "1.1.2", default-features = false, features = ["std"]}
 borsh = {version = "1.5.1", features = ["derive"] }
 sha2 =  { version = "0.10.8", default-features = false }
 crypto-bigint = { version = "0.5.5", default-features = false }
-
-risc0-zkvm = {version = "1.1.2", default-features = false, features = ["std"]}
-blake3 = { version = "1.5.4", optional = true }
+blake3 = { version = "1.5.4", default-features = false }
 
 [dev-dependencies]
 hex = "0.4.3"
@@ -17,5 +16,4 @@ hex-literal = "0.4.1"
 
 
 [features]
-default = [] # Keep the default feature set empty to avoid pulling in blake3 by default
-final-circuit = ["blake3"]
+default = []
