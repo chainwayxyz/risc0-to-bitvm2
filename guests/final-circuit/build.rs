@@ -20,7 +20,7 @@ fn main() {
     };
 
     options.insert(
-        "header-chain-guest",
+        "final-guest",
         GuestOptions {
             use_docker,
             ..Default::default()

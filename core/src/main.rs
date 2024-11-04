@@ -88,3 +88,33 @@ fn main() {
     fs::write(output_file_path, &receipt_bytes).expect("Failed to write receipt to output file");
     println!("Receipt saved to {}", output_file_path);
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_final_circuit() {
+        let final_circuit_elf = include_bytes!("../../target/riscv-guest/riscv32im-risc0-zkvm-elf/docker/final_guest/final-guest");
+        let final_proof = include_bytes!("../../first_14000.bin");
+
+        let receipt: Receipt = Receipt::try_from_slice(final_proof).unwrap();
+
+        let output = BlockHeaderCircuitOutput::try_from_slice(&receipt.journal.bytes).unwrap();
+
+        let env = ExecutorEnv::builder()
+            .write_slice(&borsh::to_vec(&output).unwrap())
+            .add_assumption(receipt)
+            .build()
+            .unwrap();
+
+        let prover = default_prover();
+
+        let receipt = prover
+            .prove_with_opts(env, final_circuit_elf, &ProverOpts::succinct())
+            .unwrap()
+            .receipt;
+
+        println!("Journal: {:#?}", receipt.journal);
+    }
+}

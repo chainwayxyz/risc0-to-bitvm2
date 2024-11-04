@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
   "header-chain",
+  "final-circuit",
 ]
 
 # Always optimize; otherwise tests take excessively long.

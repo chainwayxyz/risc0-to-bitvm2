@@ -236,6 +236,25 @@ pub fn header_chain_circuit(guest: &impl ZkvmGuest) {
     });
 }
 
+// only compiled with final-circuit feature flag
+#[cfg(feature = "final-circuit")]
+pub fn final_circuit(guest: &impl ZkvmGuest) {
+    let header_chain_circuit_output = guest.read_from_host::<BlockHeaderCircuitOutput>();
+    let header_chain_circuit_method_id: [u32; 8] = [
+        1740777564, 1806149210, 1477761109, 3327280220, 2783810329, 4076456697, 1244465978,
+        368913980,
+    ];
+    guest.verify(header_chain_circuit_method_id, &header_chain_circuit_output);
+
+    let mut hasher = blake3::Hasher::new();
+
+    hasher.update(&header_chain_circuit_output.chain_state.best_block_hash);
+    hasher.update(&header_chain_circuit_output.chain_state.total_work);
+    let final_output = hasher.finalize();
+
+    guest.commit(final_output.as_bytes());
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
