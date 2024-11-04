@@ -7,7 +7,7 @@ use circuits::{
 };
 
 use header_chain_circuit::{HEADER_CHAIN_GUEST_ELF, HEADER_CHAIN_GUEST_ID};
-use risc0_zkvm::{compute_image_id, ProverOpts, Receipt};
+use risc0_zkvm::{ProverOpts, Receipt};
 use std::{env, fs};
 
 pub mod docker;
@@ -86,14 +86,14 @@ fn main() {
     println!("Receipt saved to {}", output_file_path);
 }
 
-pub fn calculate_succinct_output_prefix(method_id: [u32; 8]) -> [u8; 32] {
+pub fn calculate_succinct_output_prefix(_method_id: [u32; 8]) -> [u8; 32] {
     todo!()
 }
 
 #[cfg(test)]
 mod tests {
     use docker::stark_to_succinct;
-    use risc0_zkvm::{compute_image_id, ReceiptClaim};
+    use risc0_zkvm::compute_image_id;
 
     use super::*;
     // #[ignore = "This is to only test final proof generation"]
@@ -102,7 +102,6 @@ mod tests {
         let final_circuit_elf = include_bytes!(
             "../../target/riscv-guest/riscv32im-risc0-zkvm-elf/docker/final_guest/final-guest"
         );
-        let final_circuit_id = compute_image_id(final_circuit_elf).unwrap();
         let final_proof = include_bytes!("../../first_10.bin");
 
         println!(
@@ -129,10 +128,7 @@ mod tests {
 
         let succinct_receipt = receipt.inner.succinct().unwrap().clone();
         println!("Journal: {:#?}", receipt.journal);
-        let proof = stark_to_succinct(
-            succinct_receipt,
-            &receipt.journal.bytes,
-        );
+        let proof = stark_to_succinct(succinct_receipt, &receipt.journal.bytes);
         print!("Proof: {:#?}", proof);
     }
 }
