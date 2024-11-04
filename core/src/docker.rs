@@ -3,26 +3,43 @@ use hex::ToHex;
 use num_bigint::BigUint;
 use num_traits::Num;
 use risc0_groth16::{to_json, ProofJson, Seal};
-use risc0_zkvm::{Receipt, ReceiptClaim, SuccinctReceipt, SuccinctReceiptVerifierParameters};
+use risc0_zkvm::sha::Digestible;
+use risc0_zkvm::{
+    sha::Digest, MaybePruned, Receipt, ReceiptClaim, SuccinctReceipt,
+    SuccinctReceiptVerifierParameters, SystemState,
+};
 use serde_json::Value;
-
 use std::{
-    env::consts::ARCH, fs, path::Path, process::{Command, Stdio}
+    env::consts::ARCH,
+    fs,
+    path::Path,
+    process::{Command, Stdio},
 };
 
 use tempfile::tempdir;
 
 pub fn stark_to_succinct(
     succinct_receipt: &SuccinctReceipt<ReceiptClaim>,
+    receipt_claim: &ReceiptClaim,
     journal: &[u8],
-    verify_stark_method_id: &[u32],
+    verify_stark_method_id: [u32; 8],
 ) -> Seal {
-    // let succinct_receipt: &SuccinctReceipt<ReceiptClaim> = receipt.inner.succinct().unwrap();
     let ident_receipt = risc0_zkvm::recursion::identity_p254(succinct_receipt).unwrap();
     let identity_p254_seal_bytes = ident_receipt.get_seal_bytes();
-    // if !is_x86_architecture() {
-    //     panic!("stark_to_snark is only supported on x86 architecture.")
-    // }
+
+    // let pre_state_bits: risc0_zkvm::MaybePruned<SystemState> = receipt_claim.clone().pre;
+    // println!("pre_state_bits: {:?}", pre_state_bits);
+    // let pre_state_digest_bits = pre_state_bits.clone().digest();
+    // println!("pre_state_digest_bits: {:?}", pre_state_digest_bits);
+    // let post_state_bits: risc0_zkvm::MaybePruned<SystemState> = receipt_claim.clone().post;
+    // println!("post_state_bits: {:?}", post_state_bits);
+    // let post_state_digest_bits = post_state_bits.clone().digest();
+    // println!("post_state_digest_bits: {:?}", post_state_digest_bits);
+
+    // This part is from risc0-groth16
+    if !is_x86_architecture() {
+        panic!("stark_to_snark is only supported on x86 architecture.")
+    }
     if !is_docker_installed() {
         panic!("Please install docker first.")
     }
@@ -30,7 +47,7 @@ pub fn stark_to_succinct(
     let tmp_dir = tempdir().unwrap();
     let work_dir = std::env::var("RISC0_WORK_DIR");
     let work_dir = work_dir.as_ref().map(Path::new).unwrap_or(tmp_dir.path());
-
+    println!("work_dir: {:?}", work_dir);
     std::fs::write(work_dir.join("seal.r0"), identity_p254_seal_bytes.clone()).unwrap();
     let seal_path = work_dir.join("input.json");
     let proof_path = work_dir.join("proof.json");
@@ -38,17 +55,34 @@ pub fn stark_to_succinct(
     to_json(&*identity_p254_seal_bytes, &mut seal_json).unwrap();
     std::fs::write(seal_path.clone(), seal_json).unwrap();
 
-    let mut pre_state_bits: Vec<u8> = Vec::new();
-    for item in verify_stark_method_id.iter().take(8) {
-        for j in 0..4 {
-            for k in 0..8 {
-                pre_state_bits.push((item >> (8 * j + 7 - k)) as u8 & 1);
-            }
-        }
-    }
+    // Add additional fields to our input.json
+    // let pre_state_bits: Vec<String> = verify_stark_method_id
+    //     .iter()
+    //     .flat_map(|item| {
+    //         // Iterate over the bits from most significant (31) to least significant (0)
+    //         (0..32).rev().map(move |n| ((item >> n) & 1).to_string())
+    //     })
+    //     .take(8 * 4) // Take the first 32 bits (8 items * 4 bytes)
+    //     .collect();
 
-    let journal_hex = hex::encode(journal);
-    println!("Journal hex: {:?}", journal_hex);
+    let pre_state: risc0_zkvm::MaybePruned<SystemState> = receipt_claim.clone().pre;
+    println!("pre_state: {:?}", pre_state);
+    let pre_state_digest: Digest = pre_state.clone().digest();
+    let pre_state_digest_bits: Vec<String> = pre_state_digest
+        .as_bytes()
+        .iter()
+        .flat_map(|&byte| (0..8).rev().map(move |i| ((byte >> i) & 1).to_string()))
+        .collect();
+    println!("pre_state_digest_bits: {:?}", pre_state_digest_bits);
+    let post_state: risc0_zkvm::MaybePruned<SystemState> = receipt_claim.clone().post;
+    println!("post_state: {:?}", post_state);
+    let post_state_digest: Digest = post_state.clone().digest();
+    let post_state_digest_bits: Vec<String> = post_state_digest
+        .as_bytes()
+        .iter()
+        .flat_map(|&byte| (0..8).rev().map(move |i| ((byte >> i) & 1).to_string()))
+        .collect();
+    println!("post_state_digest_bits: {:?}", post_state_digest_bits);
 
     let mut journal_bits = Vec::new();
     for byte in journal {
@@ -56,6 +90,7 @@ pub fn stark_to_succinct(
             journal_bits.push((byte >> (7 - i)) & 1);
         }
     }
+    println!("journal_bits len: {:?}", journal_bits.len());
 
     let succinct_verifier_params = SuccinctReceiptVerifierParameters::default();
     println!("Succinct verifier params: {:?}", succinct_verifier_params);
@@ -73,45 +108,34 @@ pub fn stark_to_succinct(
     let a1_dec = to_decimal(&a1_str).unwrap();
     println!("Succinct control root a0 dec: {:?}", a0_dec);
     println!("Succinct control root a1 dec: {:?}", a1_dec);
+    
 
-    let id_bn254_fr_bits = ident_receipt
+    let id_bn254_fr_bits: Vec<String> = ident_receipt
         .control_id
         .as_bytes()
         .iter()
-        .flat_map(|&byte| (0..8).rev().map(move |i| (byte >> i) & 1));
+        .flat_map(|&byte| (0..8).rev().map(move |i| ((byte >> i) & 1).to_string()))
+        .collect();
+    println!("id_bn254_fr_bits: {:?}", id_bn254_fr_bits);
 
     let mut seal_json: Value = {
         let file_content = fs::read_to_string(&seal_path).unwrap();
         serde_json::from_str(&file_content).unwrap()
     };
 
-    let journal_bits_str_vec: Vec<String> = journal_bits
-        .iter()
-        .map(|s| s.to_string())
-        .collect::<Vec<String>>();
-    let pre_state_bits_str_vec = pre_state_bits
-        .iter()
-        .map(|s| s.to_string())
-        .collect::<Vec<String>>();
-
-    let id_bn254_fr_bits_str_vec = id_bn254_fr_bits
-        .map(|s| s.to_string())
-        .collect::<Vec<String>>();
-
-    seal_json["journal_blake3_digest_bits"] = journal_bits_str_vec.into();
-    seal_json["pre_state_digest_bits"] = pre_state_bits_str_vec.into();
-    seal_json["id_bn254_fr_bits"] = id_bn254_fr_bits_str_vec.into();
+    seal_json["journal_digest_bits"] = journal_bits.into();
+    seal_json["pre_state_digest_bits"] = pre_state_digest_bits.into();
+    seal_json["post_state_digest_bits"] = post_state_digest_bits.into();
+    seal_json["id_bn254_fr_bits"] = id_bn254_fr_bits.into();
     seal_json["control_root"] = vec![a0_dec, a1_dec].into();
     std::fs::write(seal_path, serde_json::to_string_pretty(&seal_json).unwrap()).unwrap();
-
-    println!("Starting proving");
 
     let output = Command::new("docker")
         .arg("run")
         .arg("--rm")
         .arg("-v")
         .arg(format!("{}:/mnt", work_dir.to_string_lossy()))
-        .arg("risc0-groth16-prover")
+        .arg("risc0-groth16-prover") // TODO: Change to the correct image name
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .output()
@@ -124,40 +148,10 @@ pub fn stark_to_succinct(
             output.status.code()
         );
     }
-
+    println!("proof_path: {:?}", proof_path);
     let contents = std::fs::read_to_string(proof_path).unwrap();
     let proof_json: ProofJson = serde_json::from_str(&contents).unwrap();
     proof_json.try_into().unwrap()
-
-}
-
-pub fn bits_to_num(len: usize, bits: &[u8]) -> U256 {
-    assert!(len <= 252);
-    assert!(bits.len() == len);
-
-    let mut num_lo: u128 = 0;
-    let mut num_hi: u128 = 0;
-
-    for (i, &bit) in bits.iter().enumerate() {
-        if i < 128 {
-            num_lo |= (bit as u128) << i;
-        } else {
-            num_hi |= (bit as u128) << (i - 128);
-        }
-    }
-
-    let u256_lo = U256::from(num_lo);
-    if len > 128 {
-        let u256_hi = U256::from(num_hi) << 128;
-        u256_hi.wrapping_add(&u256_lo)
-    } else {
-        u256_lo
-    }
-}
-
-pub fn to_decimal(s: &str) -> Option<String> {
-    let int = BigUint::from_str_radix(s, 16).ok();
-    int.map(|n| n.to_str_radix(10))
 }
 
 fn is_docker_installed() -> bool {
@@ -170,4 +164,9 @@ fn is_docker_installed() -> bool {
 
 fn is_x86_architecture() -> bool {
     ARCH == "x86_64" || ARCH == "x86"
+}
+
+pub fn to_decimal(s: &str) -> Option<String> {
+    let int = BigUint::from_str_radix(s, 16).ok();
+    int.map(|n| n.to_str_radix(10))
 }

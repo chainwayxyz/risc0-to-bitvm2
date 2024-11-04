@@ -21,34 +21,32 @@ ENV CXX=clang++
 WORKDIR /src/
 RUN git clone https://github.com/iden3/circomlib.git
 
+
 # Cache ahead of the larger build process
 FROM dependencies AS builder
 
 WORKDIR /src/
-COPY circuits/stark_verify.circom ./proof/circuits/stark_verify.circom
-COPY circuits/verify_for_guest.circom ./proof/circuits/verify_for_guest.circom
-COPY circuits/blake3_compression.circom ./proof/circuits/blake3_compression.circom
-COPY circuits/blake3_common.circom ./proof/circuits/blake3_common.circom
 COPY circuits/risc0.circom ./proof/circuits/risc0.circom
-
-# Delete the last line of stark_verify.circom
-RUN sed -i '$d' ./proof/circuits/stark_verify.circom
+COPY circuits/test_stark_verify.circom ./proof/circuits/test_stark_verify.circom
+COPY circuits/test_verify_for_guest.circom ./proof/circuits/test_verify_for_guest.circom
+COPY circuits/blake3_common.circom ./proof/circuits/blake3_common.circom
+COPY circuits/blake3_compression.circom ./proof/circuits/blake3_compression.circom
 
 # Build the r1cs
-RUN (cd proof/circuits; circom --r1cs verify_for_guest.circom)
+RUN (cd proof/circuits; circom --r1cs test_verify_for_guest.circom)
 
 # Create a final clean image with all the dependencies to run the ceremony
-FROM node AS ceremony
+FROM node AS test_ceremony
 
-WORKDIR /ceremony
+WORKDIR /test_ceremony
 
 # install snarkjs globally
 RUN npm install -g snarkjs@0.7.4
 
-COPY scripts/run_ceremony.sh .
-COPY groth16/pot23.ptau /ceremony/proof/groth16/pot23.ptau
-COPY --from=builder /src/proof/circuits/verify_for_guest.r1cs /ceremony/proof/circuits/verify_for_guest.r1cs
-RUN chmod +x run_ceremony.sh
+COPY scripts/test_run_ceremony.sh .
+COPY groth16/pot19.ptau /test_ceremony/proof/groth16/pot19.ptau
+COPY --from=builder /src/proof/circuits/test_verify_for_guest.r1cs /test_ceremony/proof/circuits/test_verify_for_guest.r1cs
+RUN chmod +x test_run_ceremony.sh
 RUN ulimit -s unlimited
 
-ENTRYPOINT ["/ceremony/run_ceremony.sh", "/ceremony/proof/circuits/verify_for_guest.r1cs", "/ceremony/proof/groth16/pot23.ptau"]
+ENTRYPOINT ["/test_ceremony/test_run_ceremony.sh", "/test_ceremony/proof/circuits/test_verify_for_guest.r1cs", "/test_ceremony/proof/groth16/pot19.ptau"]
