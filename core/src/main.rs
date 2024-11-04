@@ -129,9 +129,10 @@ mod tests {
 
         let succinct_receipt = receipt.inner.succinct().unwrap().clone();
         println!("Journal: {:#?}", receipt.journal);
-        stark_to_succinct(
+        let proof = stark_to_succinct(
             succinct_receipt,
             &receipt.journal.bytes,
         );
+        print!("Proof: {:#?}", proof);
     }
 }
