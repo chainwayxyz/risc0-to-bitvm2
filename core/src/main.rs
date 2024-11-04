@@ -5,16 +5,14 @@ use circuits::{
     },
     risc0_zkvm::{default_prover, ExecutorEnv},
 };
-use docker::stark_to_succinct;
+
 use header_chain_circuit::{HEADER_CHAIN_GUEST_ELF, HEADER_CHAIN_GUEST_ID};
-use risc0_zkvm::{compute_image_id, ProverOpts, Receipt, ReceiptClaim};
+use risc0_zkvm::{compute_image_id, ProverOpts, Receipt};
 use std::{env, fs};
 
 pub mod docker;
 
 fn main() {
-    let final_circuit_elf = include_bytes!("../../target/riscv-guest/riscv32im-risc0-zkvm-elf/docker/final_guest/final-guest");
-    let final_circuit_id= compute_image_id(final_circuit_elf).unwrap();
     // Parse command-line arguments
     let args: Vec<String> = env::args().collect();
     if args.len() < 4 {
@@ -40,9 +38,8 @@ fn main() {
         let proof_bytes = fs::read(input_proof).expect("Failed to read input proof file");
         let receipt: Receipt = Receipt::try_from_slice(&proof_bytes).unwrap();
         Some(receipt)
-        // let prev_output = BlockHeaderCircuitOutput::try_from_slice(&receipt.journal.bytes).unwrap();
-        // HeaderChainPrevProofType::PrevProof(prev_output)
     };
+
     let mut start = 0;
     let prev_proof = match prev_receipt.clone() {
         Some(receipt) => {
@@ -61,13 +58,12 @@ fn main() {
         block_headers: headers[start..start + batch_size].to_vec(),
     };
 
+    // Build ENV
     let mut binding = ExecutorEnv::builder();
     let mut env = binding.write_slice(&borsh::to_vec(&input).unwrap());
-
     if let Some(receipt) = prev_receipt {
         env = env.add_assumption(receipt);
     }
-
     let env = env.build().unwrap();
 
     // Obtain the default prover.
@@ -81,12 +77,8 @@ fn main() {
 
     // Extract journal of receipt
     let output = BlockHeaderCircuitOutput::try_from_slice(&receipt.journal.bytes).unwrap();
-    println!("output method id: {:#?}", output.method_id);
 
-    // println!("Total work: {:#?}", output);
-    println!("Method id: {:#?}", HEADER_CHAIN_GUEST_ID);
-    println!("Journal: {:#?}", receipt.journal);
-
+    println!("Output: {:#?}", output.method_id);
 
     // Save the receipt to the specified output file path
     let receipt_bytes = borsh::to_vec(&receipt).unwrap();
