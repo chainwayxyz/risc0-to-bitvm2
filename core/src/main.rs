@@ -95,7 +95,7 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use docker::stark_to_succinct;
-    use risc0_zkvm::compute_image_id;
+    use risc0_zkvm::{compute_image_id, ReceiptClaim};
 
     use super::*;
     #[ignore = "This is to only test final proof generation"]
@@ -123,8 +123,10 @@ mod tests {
             .prove_with_opts(env, final_circuit_elf, &ProverOpts::succinct())
             .unwrap()
             .receipt;
+        let composite_receipt_claim: ReceiptClaim = receipt.claim().unwrap().value().unwrap();
+        // println!("Composite receipt claim post: {:#?}", composite_receipt_claim.post);
         let succinct_receipt = receipt.inner.succinct().unwrap();
         println!("Journal: {:#?}", receipt.journal);
-        stark_to_succinct(succinct_receipt, &receipt.journal.bytes, final_circuit_id.as_words());
+        stark_to_succinct(succinct_receipt, &composite_receipt_claim, &receipt.journal.bytes, final_circuit_id.into());
     }
 }

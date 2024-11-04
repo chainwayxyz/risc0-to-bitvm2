@@ -61,12 +61,12 @@ template Blake3_with_scalar_output () {
 template Journal() {
     signal input journal_bits_in[256]; // journal in bits
     signal input pre_state_digest_bits[256]; // pre_state_digest in bits, this is kind of needed since it changes each time a different guest circuit is used. But it is constant for a given circuit.
-
+    signal input post_state_digest_bits[256];
     signal output out[2]; // claim_digest in [u128, u128]
 
 
     // post_digest = 74032234001928697417723972706442396998535281042410084191249638976189322148066; // Constant no matter the circuit
-    var post_digest_bits[256] = [1,0,1,0,0,0,1,1,1,0,1,0,1,1,0,0,1,1,0,0,0,0,1,0,0,1,1,1,0,0,0,1,0,0,0,1,0,1,1,1,0,1,0,0,0,0,0,1,1,0,0,0,1,0,0,1,1,0,0,1,0,1,1,0,0,0,1,1,0,1,0,0,0,0,0,0,1,0,1,1,1,0,0,0,0,1,0,0,1,1,1,0,0,1,0,1,1,0,1,0,1,0,0,1,0,0,0,0,1,1,1,1,0,0,1,1,1,1,1,0,1,1,1,1,0,1,0,0,1,1,0,0,0,1,0,0,1,0,0,1,1,1,0,1,0,0,1,0,0,0,1,0,1,1,0,0,0,1,1,1,1,0,0,1,1,1,1,0,0,1,0,0,0,1,0,0,1,0,1,0,1,0,1,0,1,1,0,1,1,0,0,0,0,0,1,0,0,0,1,0,1,1,1,0,1,1,0,0,1,0,0,1,1,1,0,0,0,0,1,1,0,0,0,1,0,0,1,1,1,1,1,0,0,0,0,1,1,1,1,0,1,0,1,1,1,0,0,0,1,1,1,0,0,0,1,0];
+    // var post_digest_bits[256] = [1,0,1,0,0,0,1,1,1,0,1,0,1,1,0,0,1,1,0,0,0,0,1,0,0,1,1,1,0,0,0,1,0,0,0,1,0,1,1,1,0,1,0,0,0,0,0,1,1,0,0,0,1,0,0,1,1,0,0,1,0,1,1,0,0,0,1,1,0,1,0,0,0,0,0,0,1,0,1,1,1,0,0,0,0,1,0,0,1,1,1,0,0,1,0,1,1,0,1,0,1,0,0,1,0,0,0,0,1,1,1,1,0,0,1,1,1,1,1,0,1,1,1,1,0,1,0,0,1,1,0,0,0,1,0,0,1,0,0,1,1,1,0,1,0,0,1,0,0,0,1,0,1,1,0,0,0,1,1,1,1,0,0,1,1,1,1,0,0,1,0,0,0,1,0,0,1,0,1,0,1,0,1,0,1,1,0,1,1,0,0,0,0,0,1,0,0,0,1,0,1,1,1,0,1,1,0,0,1,0,0,1,1,1,0,0,0,0,1,1,0,0,0,1,0,0,1,1,1,1,1,0,0,0,0,1,1,1,1,0,1,0,1,1,1,0,0,0,1,1,1,0,0,0,1,0];
 
     // CONSTANTS
 
@@ -110,7 +110,7 @@ template Journal() {
         claim_hasher.in[512 + i] <== pre_state_digest_bits[i];
     }
     for (var i = 0; i < 256; i++) {
-        claim_hasher.in[768 + i] <== post_digest_bits[i];
+        claim_hasher.in[768 + i] <== post_state_digest_bits[i];
     }
     for (var i = 0; i < 256; i++) {
         claim_hasher.in[1024 + i] <== output_hasher.out[i];
@@ -145,6 +145,7 @@ template VerifyForGuest() {
     signal input journal_blake3_digest_bits[256]; // We assume the journal is 32 bytes long, so 256 bits.
     signal input control_root[2]; // This is the control root of the STARK circuit, sort of a Merkle root of some stuff I do not know by heart. CONSTANT FOR A GIVEN CIRCUIT.
     signal input pre_state_digest_bits[256]; // This is the pre-state digest of the STARK circuit. CONSTANT FOR A GIVEN CIRCUIT.
+    signal input post_state_digest_bits[256]; // This is the post-state digest of the STARK circuit. CONSTANT FOR A GIVEN CIRCUIT.
     signal input id_bn254_fr_bits[256]; // This is the code root of the STARK circuit. CONSTANT FOR A GIVEN CIRCUIT.
     signal output final_blake3_digest; // This will be Blake3(ALL_CONSTANTS, journal_blake3_digest) and its first 248 bits.
 
@@ -162,6 +163,9 @@ template VerifyForGuest() {
     }
     for (var i = 0; i < 256; i++) {
         claim.pre_state_digest_bits[i] <== pre_state_digest_bits[i];
+    }
+    for (var i = 0; i < 256; i++) {
+        claim.post_state_digest_bits[i] <== post_state_digest_bits[i];
     }
 
 

@@ -3,9 +3,9 @@ use hex::ToHex;
 use num_bigint::BigUint;
 use num_traits::Num;
 use risc0_groth16::{to_json, ProofJson, Seal};
-use risc0_zkvm::{Receipt, ReceiptClaim, SuccinctReceipt, SuccinctReceiptVerifierParameters};
+use risc0_zkvm::{sha::Digest, MaybePruned, Receipt, ReceiptClaim, SuccinctReceipt, SuccinctReceiptVerifierParameters, SystemState};
 use serde_json::Value;
-
+use risc0_zkvm::sha::Digestible;
 use std::{
     env::consts::ARCH,
     fs,
@@ -17,11 +17,21 @@ use tempfile::tempdir;
 
 pub fn stark_to_succinct(
     succinct_receipt: &SuccinctReceipt<ReceiptClaim>,
+    receipt_claim: &ReceiptClaim,
     journal: &[u8],
-    verify_stark_method_id: &[u32],
+    verify_stark_method_id: [u32; 8],
 ) -> Seal {
     let ident_receipt = risc0_zkvm::recursion::identity_p254(succinct_receipt).unwrap();
     let identity_p254_seal_bytes = ident_receipt.get_seal_bytes();
+
+    // let pre_state_bits: risc0_zkvm::MaybePruned<SystemState> = receipt_claim.clone().pre;
+    // println!("pre_state_bits: {:?}", pre_state_bits);
+    // let pre_state_digest_bits = pre_state_bits.clone().digest();
+    // println!("pre_state_digest_bits: {:?}", pre_state_digest_bits);
+    // let post_state_bits: risc0_zkvm::MaybePruned<SystemState> = receipt_claim.clone().post;
+    // println!("post_state_bits: {:?}", post_state_bits);
+    // let post_state_digest_bits = post_state_bits.clone().digest();
+    // println!("post_state_digest_bits: {:?}", post_state_digest_bits);
 
     // This part is from risc0-groth16
     // if !is_x86_architecture() {
@@ -43,14 +53,37 @@ pub fn stark_to_succinct(
     std::fs::write(seal_path.clone(), seal_json).unwrap();
 
     // Add additional fields to our input.json
-    let pre_state_bits: Vec<String> = verify_stark_method_id
-        .iter()
-        .flat_map(|item| {
-            // Iterate over the bits from most significant (31) to least significant (0)
-            (0..32).rev().map(move |n| ((item >> n) & 1).to_string())
-        })
-        .take(8 * 4) // Take the first 32 bits (8 items * 4 bytes)
-        .collect();
+    // let pre_state_bits: Vec<String> = verify_stark_method_id
+    //     .iter()
+    //     .flat_map(|item| {
+    //         // Iterate over the bits from most significant (31) to least significant (0)
+    //         (0..32).rev().map(move |n| ((item >> n) & 1).to_string())
+    //     })
+    //     .take(8 * 4) // Take the first 32 bits (8 items * 4 bytes)
+    //     .collect();
+
+    let pre_state: risc0_zkvm::MaybePruned<SystemState> = receipt_claim.clone().pre;
+    println!("pre_state: {:?}", pre_state);
+    let pre_state_digest: Digest = pre_state.clone().digest();
+    let pre_state_digest_bits: Vec<String> = pre_state_digest.as_words().iter()
+    .flat_map(|item| {
+        // Iterate over the bits from most significant (31) to least significant (0)
+        (0..32).rev().map(move |n| ((item >> n) & 1).to_string())
+    })
+    .take(8 * 4) // Take the first 32 bits (8 items * 4 bytes)
+    .collect();;
+    println!("pre_state_digest_bits: {:?}", pre_state_digest_bits);
+    let post_state: risc0_zkvm::MaybePruned<SystemState> = receipt_claim.clone().post;
+    println!("post_state: {:?}", post_state);
+    let post_state_digest: Digest = post_state.clone().digest();
+    let post_state_digest_bits: Vec<String> = post_state_digest.as_words().iter()
+    .flat_map(|item| {
+        // Iterate over the bits from most significant (31) to least significant (0)
+        (0..32).rev().map(move |n| ((item >> n) & 1).to_string())
+    })
+    .take(8 * 4) // Take the first 32 bits (8 items * 4 bytes)
+    .collect();;
+    println!("post_state_digest_bits: {:?}", post_state_digest_bits);
 
     let journal_bits: Vec<String> = journal
         .iter()
@@ -83,7 +116,8 @@ pub fn stark_to_succinct(
     };
 
     seal_json["journal_blake3_digest_bits"] = journal_bits.into();
-    seal_json["pre_state_digest_bits"] = pre_state_bits.into();
+    seal_json["pre_state_digest_bits"] = pre_state_digest_bits.into();
+    seal_json["post_state_digest_bits"] = post_state_digest_bits.into();
     seal_json["id_bn254_fr_bits"] = id_bn254_fr_bits.into();
     seal_json["control_root"] = vec![a0_str, a1_str].into();
     std::fs::write(seal_path, serde_json::to_string_pretty(&seal_json).unwrap()).unwrap();

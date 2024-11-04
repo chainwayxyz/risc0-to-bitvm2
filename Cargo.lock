@@ -529,6 +529,7 @@ dependencies = [
  "num-bigint 0.4.6",
  "num-traits",
  "risc0-groth16",
+ "risc0-zkp",
  "risc0-zkvm",
  "serde_json",
  "tempfile",

@@ -27,7 +27,12 @@ FROM dependencies AS builder
 WORKDIR /src/
 COPY circuits/stark_verify.circom ./proof/circuits/stark_verify.circom
 COPY circuits/verify_for_guest.circom ./proof/circuits/verify_for_guest.circom
-COPY circuits/blake3.circom ./proof/circuits/blake3.circom
+COPY circuits/blake3_compression.circom ./proof/circuits/blake3_compression.circom
+COPY circuits/blake3_common.circom ./proof/circuits/blake3_common.circom
+COPY circuits/risc0.circom ./proof/circuits/risc0.circom
+
+# Delete the last line of stark_verify.circom
+RUN sed -i '$d' ./proof/circuits/stark_verify.circom
 
 # Build the r1cs
 RUN (cd proof/circuits; circom --r1cs verify_for_guest.circom)
