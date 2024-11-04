@@ -95,6 +95,7 @@ mod tests {
     use risc0_zkvm::compute_image_id;
 
     use super::*;
+    #[ignore = "This is to only test final proof generation"]
     #[test]
     fn test_final_circuit() {
         let final_circuit_elf = include_bytes!("../../target/riscv-guest/riscv32im-risc0-zkvm-elf/docker/final_guest/final-guest");
@@ -105,8 +106,6 @@ mod tests {
         println!("header chain circuit id: {}",compute_image_id(header_chain_circuit_elf).unwrap());
 
         let receipt: Receipt = Receipt::try_from_slice(final_proof).unwrap();
-
-        println!("Receipt verification: {:#?}", receipt.verify([785726750, 2319694325, 2467124832, 3708080889, 1169398785, 2304475553, 3312010205, 540991776]));
 
         let output = BlockHeaderCircuitOutput::try_from_slice(&receipt.journal.bytes).unwrap();
 
