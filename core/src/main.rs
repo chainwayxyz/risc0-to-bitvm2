@@ -7,7 +7,7 @@ use circuits::{
 };
 
 use header_chain_circuit::{HEADER_CHAIN_GUEST_ELF, HEADER_CHAIN_GUEST_ID};
-use risc0_zkvm::{ProverOpts, Receipt};
+use risc0_zkvm::{recursion::MerkleGroup, ProverOpts, Receipt, SuccinctReceiptVerifierParameters};
 use std::{env, fs};
 
 pub mod docker;
@@ -86,7 +86,21 @@ fn main() {
     println!("Receipt saved to {}", output_file_path);
 }
 
-pub fn calculate_succinct_output_prefix(_method_id: [u32; 8]) -> [u8; 32] {
+pub fn calculate_succinct_output_prefix(method_id: [u32; 8]) -> [u8; 32] {
+    let succinct_verifier_params = SuccinctReceiptVerifierParameters::default();
+    println!("Succinct verifier params: {:?}", succinct_verifier_params);
+    let succinct_control_root = succinct_verifier_params.control_root;
+
+
+    let mut pre_state_bits: Vec<u8> = Vec::new();
+    for item in method_id.iter().take(8) {
+        for j in 0..4 {
+            for k in 0..8 {
+                pre_state_bits.push((item >> (8 * j + 7 - k)) as u8 & 1);
+            }
+        }
+    };
+
     todo!()
 }
 
