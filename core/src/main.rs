@@ -7,7 +7,9 @@ use circuits::{
 };
 
 use header_chain_circuit::{HEADER_CHAIN_GUEST_ELF, HEADER_CHAIN_GUEST_ID};
-use risc0_zkvm::{ProverOpts, Receipt, SuccinctReceiptVerifierParameters};
+use risc0_zkvm::{ProverOpts, Receipt, SuccinctReceipt, SuccinctReceiptVerifierParameters};
+use sha2::Sha256;
+use sha2::Digest;
 use std::{env, fs};
 
 pub mod docker;
@@ -86,22 +88,44 @@ fn main() {
     println!("Receipt saved to {}", output_file_path);
 }
 
-pub fn calculate_succinct_output_prefix(method_id: [u32; 8]) -> [u8; 32] {
+/// control_root, pre_state_digest, post_state_digest, id_bn254_fr
+pub fn calculate_succinct_output_prefix(method_id: &[u8]) -> [u8; 32] {
     let succinct_verifier_params = SuccinctReceiptVerifierParameters::default();
     println!("Succinct verifier params: {:?}", succinct_verifier_params);
     let succinct_control_root = succinct_verifier_params.control_root;
+    println!("Succinct control root: {:?}", succinct_control_root);
+    let mut succinct_control_root_bytes: [u8; 32] =
+        succinct_control_root.as_bytes().try_into().unwrap();
+    // succinct_control_root_bytes.reverse();
+    for byte in succinct_control_root_bytes.iter_mut() {
+        *byte = byte.reverse_bits();
+    }
 
+    // let mut pre_state_bits: Vec<u8> = Vec::new();
+    // for item in method_id.iter().take(8) {
+    //     for j in 0..4 {
+    //         for k in 0..8 {
+    //             pre_state_bits.push((item >> (8 * j + 7 - k)) as u8 & 1);
+    //         }
+    //     }
+    // };
+    let pre_state_bytes = method_id.to_vec();
+    println!("pre_state_bytes: {:?}", pre_state_bytes);
 
-    let mut pre_state_bits: Vec<u8> = Vec::new();
-    for item in method_id.iter().take(8) {
-        for j in 0..4 {
-            for k in 0..8 {
-                pre_state_bits.push((item >> (8 * j + 7 - k)) as u8 & 1);
-            }
-        }
-    };
+    let control_id_bytes = hex::decode("4e160df1e119ac0e3d658755a9edf38c8feb307b34bc10b57f4538dbe122a005").unwrap(); // id_bn254_fr
+    // let ident_receipt = risc0_zkvm::recursion::identity_p254(SuccinctReceipt<ReceiptClaim>::);
 
-    todo!()
+    let post_state_bytes = hex::decode("a3acc27117418996340b84e5a90f3ef4c49d22c79e44aad822ec9c313e1eb8e2").unwrap(); // post_state_digest
+
+    let mut hasher = Sha256::new();
+    hasher.update(&succinct_control_root_bytes);
+    hasher.update(&pre_state_bytes);
+    hasher.update(&post_state_bytes);
+    hasher.update(&control_id_bytes);
+    let result: [u8; 32] = hasher.finalize().try_into()
+        .expect("SHA256 should produce a 32-byte output");
+
+    result
 }
 
 #[cfg(test)]
@@ -117,6 +141,8 @@ mod tests {
             "../../target/riscv-guest/riscv32im-risc0-zkvm-elf/docker/final_guest/final-guest"
         );
         let final_proof = include_bytes!("../../first_10.bin");
+        let final_circuit_id = compute_image_id(final_circuit_elf).unwrap();
+        println!("final circuit id: {:#?}", final_circuit_id);
 
         println!(
             "final circuit id: {}",
@@ -141,8 +167,18 @@ mod tests {
             .receipt;
 
         let succinct_receipt = receipt.inner.succinct().unwrap().clone();
-        println!("Journal: {:#?}", receipt.journal);
+        let receipt_claim = succinct_receipt.clone().claim;
+        println!("Receipt claim: {:#?}", receipt_claim);
+        let journal: [u8; 32] = receipt.journal.bytes.clone().try_into().unwrap();
         let proof = stark_to_succinct(succinct_receipt, &receipt.journal.bytes);
         print!("Proof: {:#?}", proof);
+        let constants_digest = calculate_succinct_output_prefix(final_circuit_id.as_bytes());
+        println!("Constants digest: {:#?}", constants_digest);
+        println!("Journal: {:#?}", receipt.journal);
+        let mut hasher = blake3::Hasher::new();
+        hasher.update(&constants_digest);
+        hasher.update(&journal);
+        let final_output = hasher.finalize();
+        println!("Final output: {:#?}", final_output);
     }
 }

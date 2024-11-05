@@ -43,6 +43,7 @@ pub fn stark_to_succinct(succinct_receipt: SuccinctReceipt<ReceiptClaim>, journa
     let pre_state: risc0_zkvm::MaybePruned<SystemState> = receipt_claim.clone().pre;
     println!("pre_state: {:?}", pre_state);
     let pre_state_digest: Digest = pre_state.clone().digest();
+    println!("pre_state_digest: {:?}", pre_state_digest);
     let pre_state_digest_bits: Vec<String> = pre_state_digest
         .as_bytes()
         .iter()
@@ -83,7 +84,7 @@ pub fn stark_to_succinct(succinct_receipt: SuccinctReceipt<ReceiptClaim>, journa
     let a1_dec = to_decimal(&a1_str).unwrap();
     println!("Succinct control root a0 dec: {:?}", a0_dec);
     println!("Succinct control root a1 dec: {:?}", a1_dec);
-
+    println!("CONTROL_ID: {:?}", ident_receipt.control_id);
     let id_bn254_fr_bits: Vec<String> = ident_receipt
         .control_id
         .as_bytes()
@@ -109,7 +110,7 @@ pub fn stark_to_succinct(succinct_receipt: SuccinctReceipt<ReceiptClaim>, journa
         .arg("--rm")
         .arg("-v")
         .arg(format!("{}:/mnt", work_dir.to_string_lossy()))
-        .arg("risc0-groth16-prover") // TODO: Change to the correct image name
+        .arg("risc0-test-groth16-prover") // TODO: Change to the correct image name
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .output()
