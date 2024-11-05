@@ -7,7 +7,7 @@ use circuits::{
 };
 
 use header_chain_circuit::{HEADER_CHAIN_GUEST_ELF, HEADER_CHAIN_GUEST_ID};
-use risc0_zkvm::{recursion::MerkleGroup, ProverOpts, Receipt, SuccinctReceiptVerifierParameters};
+use risc0_zkvm::{ProverOpts, Receipt, SuccinctReceiptVerifierParameters};
 use std::{env, fs};
 
 pub mod docker;
