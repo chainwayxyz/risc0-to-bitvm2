@@ -70,8 +70,28 @@ cargo test -r --package core --bin core -- tests --show-output
 ## Our Approach
 ### Goal
 Our goal is to be able to (optimistically) prove any computation inside BitVM. Overall system is as follows:
-Any computation -> ZK Proof 1 (Succinct STARK Proof - via Risc0 ZKVM) -> ZK Proof 2 with constant sized (32 bytes) output (Succinct STARK Proof - via Risc0 ZKVM) -> Groth16 Proof with a single public output binding the previous circuits with Blake3 hashing (via Risc0's STARK Verifier Circom circuit + Our Circom circuit for end-to-end binding) -> BitVM.
-Here, the journals with non-constant sizes of the general purpose circuits will be verified in BitVM to ensure the correctness of the claims.
+<div align="center">
+  <b>Any computation</b> <br> 
+  ⬇️ <br>
+  <b>ZK Proof 1</b>: Succinct STARK Proof via Risc0 ZKVM <br>
+  ⬇️ <br>
+  <b>ZK Proof 2</b>: With constant-sized (32 bytes) digest of the journal of the previous proof (Succinct STARK Proof via Risc0 ZKVM) <br>
+  ⬇️ <br>
+  <b>Groth16 Proof</b>: Single public output binding the previous circuits with Blake3 hashing <br>
+  <i>(via Risc0's STARK Verifier Circom circuit + our Circom circuit for end-to-end binding)</i> <br>
+  ⬇️ <br>
+  <b>BitVM</b>
+</div>
+
+> Here, the journals with non-constant sizes of the general-purpose circuits will be digested (etc. hashing using Blake3) with the circuit constants (`general_purpose_circuit_method_id`, `final_circuit_method_id`, `pre_state`, `post_state`, etc.) in BitVM to ensure the correctness of the claims.
+
 ### Bitcoin
  In the case of Bitcoin, it is the bridge operations (PegIn/PegOut). This requires the proving of the Bitcoin block headers. With `header-chain-circuit`, one can prove the current state of the Bitcoin given the block headers. It does not necessarily prevent the malicious actors to generate proofs for their private forks, but the calculation of the `ChainState` is the basis for the conflict resolution. For more, see:
  [Proof of work](https://en.bitcoin.it/wiki/Proof_of_work).
+
+
+ ## Acknowledgments
+
+- [Risc0](https://github.com/risc0/risc0): This repository is built using the technology stack of Risc0, more specifically Risc0 ZKVM and their STARK verifier Circom circuit.
+- [Blake3 Circom](https://github.com/banyancomputer/hot-proofs-blake3-circom): The Circom circuit of the Blake3 hash function implementation is taken from here.
+- [Bitcoin Header Chain Proof](https://github.com/ZeroSync/header_chain/tree/master/program/src/block_header): Our Bitcoin header chain proof circuit implementation is inspired by the Bitcoin Core implementation and ZeroSync's header chain proof circuit.

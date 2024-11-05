@@ -153,6 +153,7 @@ fn target_to_bits(target: &[u8; 32]) -> u32 {
     u32::from_be_bytes(compact_target)
 }
 
+/// Calculates the new difficulty target for the next epoch.
 fn calculate_new_difficulty(
     epoch_start_time: u32,
     last_timestamp: u32,
