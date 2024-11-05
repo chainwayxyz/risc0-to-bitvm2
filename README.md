@@ -66,3 +66,12 @@ To test the setup, use:
 ```bash
 cargo test -r --package core --bin core -- tests --show-output
 ```
+
+## Our Approach
+### Goal
+Our goal is to be able to (optimistically) prove any computation inside BitVM. Overall system is as follows:
+Any computation -> ZK Proof 1 (Succinct STARK Proof - via Risc0 ZKVM) -> ZK Proof 2 with constant sized (32 bytes) output (Succinct STARK Proof - via Risc0 ZKVM) -> Groth16 Proof with a single public output binding the previous circuits with Blake3 hashing (via Risc0's STARK Verifier Circom circuit + Our Circom circuit for end-to-end binding) -> BitVM.
+Here, the journals with non-constant sizes of the general purpose circuits will be verified in BitVM to ensure the correctness of the claims.
+### Bitcoin
+ In the case of Bitcoin, it is the bridge operations (PegIn/PegOut). This requires the proving of the Bitcoin block headers. With `header-chain-circuit`, one can prove the current state of the Bitcoin given the block headers. It does not necessarily prevent the malicious actors to generate proofs for their private forks, but the calculation of the `ChainState` is the basis for the conflict resolution. For more, see:
+ [Proof of work](https://en.bitcoin.it/wiki/Proof_of_work).

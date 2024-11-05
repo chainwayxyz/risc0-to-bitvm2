@@ -1,12 +1,17 @@
-use crate::ZkvmGuest;
+// Implementation of this module is inspired by the Bitcoin Core source code and from here: 
+// https://github.com/ZeroSync/header_chain/tree/master/program/src/block_header.
 
+/// This module contains the implementation of the header chain circuit, which is basically
+/// the Bitcoin header chain verification logic.
+/// WARNING: This implementation is not a word-to-word translation of the Bitcoin Core source code.
+use crate::ZkvmGuest;
 use borsh::{BorshDeserialize, BorshSerialize};
 use crypto_bigint::{Encoding, U256};
 use sha2::{Digest, Sha256};
 
 /// The minimum amount of work required for a block to be valid (represented as `bits`)
 const MAX_BITS: u32 = 0x1d00FFFF;
-
+/// The maximum target value, which corresponds to the minimum difficulty
 const MAX_TARGET: U256 =
     U256::from_be_hex("00000000FFFF0000000000000000000000000000000000000000000000000000");
 
@@ -17,6 +22,20 @@ const EXPECTED_EPOCH_TIMESPAN: u32 = 60 * 60 * 24 * 14;
 /// Number of blocks per epoch
 const BLOCKS_PER_EPOCH: u32 = 2016;
 
+/// Bitcoin block header.
+/// An example serialized header is the genesis block of Bitcoin Mainnet:
+/// `0100000000000000000000000000000000000000000000000000000000000000000000003ba3edfd7a7b12b27ac72c3e67768f617fc81bc3888a51323a9fb8aa4b1e5e4a29ab5f49ffff001d1dac2b7c`,
+/// where:
+/// - `01000000` is the version, 
+/// - `0000000000000000000000000000000000000000000000000000000000000000` is the previous block hash,
+/// - `3ba3edfd7a7b12b27ac72c3e67768f617fc81bc3888a51323a9fb8aa4b1e5e4a` is the Merkle root,
+/// - `29ab5f49` is the timestamp,
+/// - `ffff001d` is the bits,
+/// - `1dac2b7c` is the nonce of the block.
+/// Here, if you calculate the block hash of the block, you will get:
+/// `6fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d6190000000000`. Here, this representation is in little-endian form, as Bitcoin uses little-endian byte order.
+/// Therefore, one must always be cautious about the byte order when working with Bitcoin block headers.
+/// 
 #[derive(Debug, Clone, BorshDeserialize, BorshSerialize)]
 pub struct BlockHeader {
     pub version: i32,
@@ -28,7 +47,10 @@ pub struct BlockHeader {
 }
 
 impl BlockHeader {
+    /// Computes the hash of the block header
     pub fn compute_block_hash(&self) -> [u8; 32] {
+        println!("Computing block hash");
+        println!("Input: {:?}", self);
         let mut hasher = Sha256::new(); // Does this takes time? Can we use a global hasher?
         hasher.update(&self.version.to_le_bytes());
         hasher.update(&self.prev_block_hash);
@@ -44,20 +66,29 @@ impl BlockHeader {
             .finalize()
             .try_into()
             .expect("SHA256 should produce a 32-byte output");
+        println!("Output: {:?}", result);
         result
     }
 }
 
+/// The state of the blockchain
 #[derive(Debug, Clone, BorshDeserialize, BorshSerialize)]
 pub struct ChainState {
+    /// The height of the blockchain
     pub block_height: u32,
+    /// The total work done in the blockchain
     pub total_work: [u8; 32],
+    /// The hash of the best block (current tip of the blockchain)
     pub best_block_hash: [u8; 32],
+    /// The current target bits
     pub current_target_bits: u32,
-    pub epoch_start_time: u32, // Represents the time of the first block in the current epoch (the difficulty adjustment timestamp)
-    pub prev_11_timestamps: [u32; 11],
+    /// The time of the first block in the current epoch (the difficulty adjustment timestamp)
+    pub epoch_start_time: u32,
+    /// The timestamps of the previous 11 blocks
+    pub prev_11_timestamps: [u32; 11], // 
 }
 
+/// Calculate the median of an array of 11 elements. Used for the timestamp validation.
 fn median(arr: [u32; 11]) -> u32 {
     // Sort the array
     let mut sorted_arr = arr;
@@ -67,6 +98,7 @@ fn median(arr: [u32; 11]) -> u32 {
     sorted_arr[5]
 }
 
+/// Validates the block time against the median of the previous 11 blocks' timestamps
 fn validate_timestamp(block_time: u32, prev_11_timestamps: [u32; 11]) {
     let median_time = median(prev_11_timestamps);
     if block_time <= median_time {
@@ -74,22 +106,41 @@ fn validate_timestamp(block_time: u32, prev_11_timestamps: [u32; 11]) {
     }
 }
 
-/// https://learnmeabitcoin.com/technical/block/#bits
+/// Converts the little-endian `bits` field of a block header to a big-endian target 
+/// value. For example, the bits `0x1d00ffff` is converted to the target
+/// `0x00000000FFFF0000000000000000000000000000000000000000000000000000`.
+/// Here, `"0x1d0ffff".from_be_bytes::<u32>() = 486604799` is the value you would see
+/// when working with the RPC interface of a Bitcoin node. But when computing the block hash,
+/// it will be serialized and used as `486604799.to_le_bytes()`.
+/// Example use:
+/// `bits: u32 = 486604799;
+/// `, 
+/// See https://learnmeabitcoin.com/technical/block/#bits.
 fn bits_to_target(bits: u32) -> [u8; 32] {
+    println!("Converting bits to target");
+    println!("Input: {:?}", bits);
     let size = (bits >> 24) as usize;
-    let word = bits & 0x00ffffff;
+    let mantissa = bits & 0x00ffffff;
 
     // Prepare U256 target
-    let target = if size <= 3 {
-        U256::from(word >> (8 * (3 - size)))
-    } else {
-        U256::from(word) << (8 * (size - 3))
+    let target = 
+    // If the size is less than or equal to 3, we need to shift the word to the right,
+    // but this scenario is not likely in real life
+    if size <= 3 {
+        U256::from(mantissa >> (8 * (3 - size)))
+    } 
+    // If the size is greater than 3, we need to shift the mantissa to the left
+    else {
+        U256::from(mantissa) << (8 * (size - 3))
     };
-
+    println!("Output: {:?}", target.to_be_bytes());
     target.to_be_bytes()
 }
 
+/// Converts the big-endian target value to the little-endian `bits` field of a block header.
 fn target_to_bits(target: &[u8; 32]) -> u32 {
+    println!("Converting target to bits");
+    println!("Input: {:?}", target);
     let target_u256 = U256::from_be_slice(target);
     let target_bits = target_u256.bits();
     let size = (263 - target_bits) / 8;
@@ -98,6 +149,7 @@ fn target_to_bits(target: &[u8; 32]) -> u32 {
     compact_target[1] = target[size - 1 as usize];
     compact_target[2] = target[size + 0 as usize];
     compact_target[3] = target[size + 1 as usize];
+    println!("Output: {:?}", u32::from_be_bytes(compact_target));
     u32::from_be_bytes(compact_target)
 }
 
@@ -106,6 +158,8 @@ fn calculate_new_difficulty(
     last_timestamp: u32,
     current_target: u32,
 ) -> [u8; 32] {
+    println!("Calculating new difficulty");
+    println!("Input: epoch_start_time: {}, last_timestamp: {}, current_target: {}", epoch_start_time, last_timestamp, current_target);
     // Step 1: Calculate the actual timespan of the epoch
     let mut actual_timespan = last_timestamp - epoch_start_time;
     if actual_timespan < EXPECTED_EPOCH_TIMESPAN / 4 {
@@ -122,15 +176,22 @@ fn calculate_new_difficulty(
     if new_target > MAX_TARGET {
         new_target = MAX_TARGET;
     }
+    println!("Output: {:?}", new_target.to_be_bytes());
     new_target.to_be_bytes()
 }
 
+/// Checks the validity of a block hash by comparing it to the target byte by byte.
+/// Here, the hash is considered valid if it is less than the target.
+/// `target_bytes` is the target in big-endian byte order.
+/// `hash` is the hash in little-endian byte order.
 fn check_hash_valid(hash: [u8; 32], target_bytes: [u8; 32]) {
-    for i in (0..32).rev() {
-        if hash[i] < target_bytes[32 - i] {
+    println!("Checking hash validity");
+    println!("Input: hash: {:?}, target_bytes: {:?}", hash, target_bytes);
+    for i in 0..32 {
+        if hash[31 - i] < target_bytes[i] {
             // The hash is valid because a byte in hash is less than the corresponding byte in target
             return;
-        } else if hash[i] > target_bytes[32 - i] {
+        } else if hash[31 - i] > target_bytes[i] {
             // The hash is invalid because a byte in hash is greater than the corresponding byte in target
             panic!("Hash is not valid");
         }
@@ -139,25 +200,34 @@ fn check_hash_valid(hash: [u8; 32], target_bytes: [u8; 32]) {
     // If we reach this point, all bytes are equal, so the hash is valid
 }
 
+/// Calculates the work done for a block hash that satisfies a given.
+/// Should use the `bits` field of the block header to calculate the target.
 fn calculate_work(target: &[u8; 32]) -> U256 {
+    println!("Calculating work");
+    println!("Input: {:?}", target);
     let target = U256::from_be_slice(target);
     let target_plus_one = target.saturating_add(&U256::ONE);
     let work = U256::MAX.wrapping_div(&target_plus_one);
+    println!("Output: {:?}", work);
     work
 }
 
+/// The output of the header chain circuit.
 #[derive(Debug, BorshDeserialize, BorshSerialize)]
 pub struct BlockHeaderCircuitOutput {
     pub method_id: [u32; 8],
     pub chain_state: ChainState,
 }
 
+/// The input proof of the header chain circuit.
+/// The proof can be either None (implying the beginning) or a Succinct Risc0 proof..
 #[derive(Debug, BorshDeserialize, BorshSerialize)]
 pub enum HeaderChainPrevProofType {
     GenesisBlock,
     PrevProof(BlockHeaderCircuitOutput),
 }
 
+/// The input of the header chain circuit.
 #[derive(Debug, BorshDeserialize, BorshSerialize)]
 pub struct HeaderChainCircuitInput {
     pub method_id: [u32; 8],
@@ -165,6 +235,7 @@ pub struct HeaderChainCircuitInput {
     pub block_headers: Vec<BlockHeader>,
 }
 
+/// Applies the given block headers to the chain state.
 pub fn apply_blocks(chain_state: &mut ChainState, block_headers: Vec<BlockHeader>) {
     let mut current_target_bytes = bits_to_target(chain_state.current_target_bits);
     let mut current_work_add = calculate_work(&current_target_bytes);
@@ -213,6 +284,7 @@ pub fn apply_blocks(chain_state: &mut ChainState, block_headers: Vec<BlockHeader
     chain_state.total_work = total_work.to_be_bytes();
 }
 
+/// The main entry point of the header chain circuit.
 pub fn header_chain_circuit(guest: &impl ZkvmGuest) {
     let input: HeaderChainCircuitInput = guest.read_from_host();
 
@@ -240,10 +312,12 @@ pub fn header_chain_circuit(guest: &impl ZkvmGuest) {
     });
 }
 
+/// The method ID for the header chain circuit.
 const HEADER_CHAIN_GUEST_ID: [u32; 8] = [
     785726750, 2319694325, 2467124832, 3708080889, 1169398785, 2304475553, 3312010205, 540991776,
 ];
 
+/// The final circuit that verifies the output of the header chain circuit.
 pub fn final_circuit(guest: &impl ZkvmGuest) {
     let header_chain_circuit_output = guest.read_from_host::<BlockHeaderCircuitOutput>();
 
@@ -755,7 +829,8 @@ mod tests {
     }
 
     #[test]
-    fn test_timestamp_checks() {
+    #[should_panic(expected = "Block time is not valid")]
+    fn test_timestamp_check_fail() {
         let block_headers = BLOCK_HEADERS
             .iter()
             .map(|header| BlockHeader::try_from_slice(header).unwrap())
@@ -766,23 +841,69 @@ mod tests {
             .map(|header| header.time)
             .collect::<Vec<u32>>();
 
+        // The validation is expected to panic
+        validate_timestamp(
+            block_headers[1].time,
+            first_11_timestamps.try_into().unwrap(),
+        );
+    }
+
+    #[test]
+    fn test_timestamp_check_pass() {
+        let block_headers = BLOCK_HEADERS
+        .iter()
+        .map(|header| BlockHeader::try_from_slice(header).unwrap())
+        .collect::<Vec<BlockHeader>>();
+
+        let first_11_timestamps = block_headers[..11]
+            .iter()
+            .map(|header| header.time)
+            .collect::<Vec<u32>>();
+
         validate_timestamp(
             block_headers[11].time,
             first_11_timestamps.clone().try_into().unwrap(),
         );
+    }
 
-        // The second validation is expected to panic
-        let result = std::panic::catch_unwind(|| {
-            validate_timestamp(
-                block_headers[1].time,
-                first_11_timestamps.try_into().unwrap(),
-            );
-        });
+    #[test]
+    #[should_panic(expected = "Hash is not valid")]
+    fn test_hash_check_fail() {
+        let block_headers = BLOCK_HEADERS
+            .iter()
+            .map(|header| BlockHeader::try_from_slice(header).unwrap())
+            .collect::<Vec<BlockHeader>>();
 
-        assert!(
-            result.is_err(),
-            "Expected the second validation to panic, but it did not."
+        let first_15_hashes = block_headers[..15]
+            .iter()
+            .map(|header| header.compute_block_hash())
+            .collect::<Vec<[u8; 32]>>();
+
+        // The validation is expected to panic
+        check_hash_valid(
+            first_15_hashes[0],
+            MAX_TARGET.wrapping_div(&(U256::ONE << 157)).to_be_bytes(),
         );
+    }
+
+    #[test]
+    fn test_hash_check_pass() {
+        let block_headers = BLOCK_HEADERS
+            .iter()
+            .map(|header| BlockHeader::try_from_slice(header).unwrap())
+            .collect::<Vec<BlockHeader>>();
+
+        let first_15_hashes = block_headers[..15]
+            .iter()
+            .map(|header| header.compute_block_hash())
+            .collect::<Vec<[u8; 32]>>();
+
+        for (i, hash) in first_15_hashes.into_iter().enumerate() {
+            check_hash_valid(
+                hash,
+                bits_to_target(block_headers[i].bits),
+            );
+        }
     }
 
     #[test]
