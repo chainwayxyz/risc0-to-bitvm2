@@ -114,7 +114,7 @@ pub fn stark_to_succinct(
         .arg("--rm")
         .arg("-v")
         .arg(format!("{}:/mnt", work_dir.to_string_lossy()))
-        .arg("risc0-test-groth16-prover") // TODO: Change to the correct image name
+        .arg("risc0-groth16-prover") // TODO: Change to the correct image name
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .output()
