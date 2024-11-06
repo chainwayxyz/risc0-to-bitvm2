@@ -43,9 +43,15 @@ template Blake3_with_scalar_output () {
     for (var i = 0; i < 8; i++) {
         to_bits[i] = to_bits_exact(32);
         to_bits[i].in <== blake3.out[i];
+        log("blake3.out[i]");
+        log(blake3.out[i]);
         for (var j = 0; j < 32; j++) {
             outbits[i*32 + j] <== to_bits[i].out[j];
         }
+    }
+    log("outbits");
+    for (var i = 0; i < 256; i++) {
+        log(outbits[i]);
     }
 
     component to_num = Bits2Num(248); // We delete the last 8 bits
@@ -244,7 +250,7 @@ template VerifyForGuest() {
         log(constants_hasher.out[i]);
     }
 
-    log("journal_digest")
+    log("journal_digest");
     for (var i = 0; i < 256; i++) {
         log(journal_digest_bits[i]);
     }
@@ -263,12 +269,52 @@ template VerifyForGuest() {
         }
     }
 
+    log("bits_to_u32");
+    for (var i = 0; i < 16; i++) {
+        log(bits_to_u32[i].out);
+    }
+
     component final_hasher = Blake3_with_scalar_output();
 
     for (var i = 0; i < 16; i++) {
         final_hasher.inp[i] <== bits_to_u32[i].out;
     }
     final_blake3_digest <== final_hasher.out;
+
+    log("final_blake3_digest", final_blake3_digest);
+
+    // component bits_to_u32[16];
+    // for (var i = 1; i < 16; i++) {
+    //     bits_to_u32[i] = Bits2Num(32);
+    //     for (var j = 0; j < 32; j++) {
+    //         bits_to_u32[i].in[j] <== 0;
+    //     }
+    // }
+    // bits_to_u32[0] = Bits2Num(32);
+    // bits_to_u32[15] = Bits2Num(32);
+    // for (var j = 1; j < 32; j++) {
+    //     bits_to_u32[0].in[j] <== 0;
+    // }
+    // bits_to_u32[0].in[0] <== 1;
+    // for (var j = 0; j < 30; j++) {
+    //     bits_to_u32[15].in[j] <== 0;
+    // }
+    // bits_to_u32[15].in[30] <== 1;
+    // bits_to_u32[15].in[31] <== 0;
+
+    // log("bits_to_u32");
+    // for (var i = 0; i < 16; i++) {
+    //     log(bits_to_u32[i].out);
+    // }
+
+    //  component final_hasher = Blake3_with_scalar_output();
+
+    // for (var i = 0; i < 16; i++) {
+    //     final_hasher.inp[i] <== bits_to_u32[i].out;
+    // }
+    // final_blake3_digest <== final_hasher.out;
+
+    // log("final_blake3_digest", final_blake3_digest);
 
 }
 

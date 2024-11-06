@@ -7,9 +7,9 @@ use circuits::{
 };
 
 use header_chain_circuit::{HEADER_CHAIN_GUEST_ELF, HEADER_CHAIN_GUEST_ID};
-use risc0_zkvm::{ProverOpts, Receipt, SuccinctReceipt, SuccinctReceiptVerifierParameters};
-use sha2::Sha256;
+use risc0_zkvm::{ProverOpts, Receipt, SuccinctReceiptVerifierParameters};
 use sha2::Digest;
+use sha2::Sha256;
 use std::{env, fs};
 
 pub mod docker;
@@ -112,17 +112,21 @@ pub fn calculate_succinct_output_prefix(method_id: &[u8]) -> [u8; 32] {
     let pre_state_bytes = method_id.to_vec();
     println!("pre_state_bytes: {:?}", pre_state_bytes);
 
-    let control_id_bytes = hex::decode("4e160df1e119ac0e3d658755a9edf38c8feb307b34bc10b57f4538dbe122a005").unwrap(); // id_bn254_fr
-    // let ident_receipt = risc0_zkvm::recursion::identity_p254(SuccinctReceipt<ReceiptClaim>::);
+    let control_id_bytes =
+        hex::decode("4e160df1e119ac0e3d658755a9edf38c8feb307b34bc10b57f4538dbe122a005").unwrap(); // id_bn254_fr
+                                                                                                  // let ident_receipt = risc0_zkvm::recursion::identity_p254(SuccinctReceipt<ReceiptClaim>::);
 
-    let post_state_bytes = hex::decode("a3acc27117418996340b84e5a90f3ef4c49d22c79e44aad822ec9c313e1eb8e2").unwrap(); // post_state_digest
+    let post_state_bytes =
+        hex::decode("a3acc27117418996340b84e5a90f3ef4c49d22c79e44aad822ec9c313e1eb8e2").unwrap(); // post_state_digest
 
     let mut hasher = Sha256::new();
     hasher.update(&succinct_control_root_bytes);
     hasher.update(&pre_state_bytes);
     hasher.update(&post_state_bytes);
     hasher.update(&control_id_bytes);
-    let result: [u8; 32] = hasher.finalize().try_into()
+    let result: [u8; 32] = hasher
+        .finalize()
+        .try_into()
         .expect("SHA256 should produce a 32-byte output");
 
     result
@@ -170,15 +174,34 @@ mod tests {
         let receipt_claim = succinct_receipt.clone().claim;
         println!("Receipt claim: {:#?}", receipt_claim);
         let journal: [u8; 32] = receipt.journal.bytes.clone().try_into().unwrap();
-        let proof = stark_to_succinct(succinct_receipt, &receipt.journal.bytes);
+        let (proof, output_json_bytes) =
+            stark_to_succinct(succinct_receipt, &receipt.journal.bytes);
         print!("Proof: {:#?}", proof);
         let constants_digest = calculate_succinct_output_prefix(final_circuit_id.as_bytes());
         println!("Constants digest: {:#?}", constants_digest);
         println!("Journal: {:#?}", receipt.journal);
+        let mut constants_blake3_input: [u8; 32] = [0; 32];
+        for i in 0..8 {
+            let mut temp: u32 =
+                u32::from_be_bytes(constants_digest[4 * i..4 * i + 4].try_into().unwrap());
+            temp = temp.reverse_bits();
+            constants_blake3_input[4 * i..4 * i + 4].copy_from_slice(&temp.to_le_bytes());
+        }
+        let mut journal_blake3_input: [u8; 32] = [0; 32];
+        for i in 0..8 {
+            let mut temp: u32 = u32::from_be_bytes(journal[4 * i..4 * i + 4].try_into().unwrap());
+            temp = temp.reverse_bits();
+            journal_blake3_input[4 * i..4 * i + 4].copy_from_slice(&temp.to_le_bytes());
+        }
+        println!("Constants blake3 input: {:#?}", constants_blake3_input);
+        println!("Journal blake3 input: {:#?}", journal_blake3_input);
         let mut hasher = blake3::Hasher::new();
-        hasher.update(&constants_digest);
-        hasher.update(&journal);
+        hasher.update(&constants_blake3_input);
+        hasher.update(&journal_blake3_input);
         let final_output = hasher.finalize();
         println!("Final output: {:#?}", final_output);
+        let final_output_bytes: [u8; 32] = final_output.try_into().unwrap();
+        let final_output_trimmed: [u8; 31] = final_output_bytes[..31].try_into().unwrap();
+        assert_eq!(final_output_trimmed, output_json_bytes);
     }
 }
