@@ -31,7 +31,7 @@ COPY circuits/blake3_compression.circom ./groth16_proof/circuits/blake3_compress
 COPY circuits/blake3_common.circom ./groth16_proof/circuits/blake3_common.circom
 COPY circuits/risc0.circom ./groth16_proof/circuits/risc0.circom
 
-# Delete the last line of stark_verify.circom
+# Delete the last line of stark_verify.circom so that we only use its template
 RUN sed -i '$d' ./groth16_proof/circuits/stark_verify.circom
 
 # Build the r1cs

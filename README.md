@@ -86,12 +86,11 @@ Our goal is to be able to (optimistically) prove any computation inside BitVM. O
 > Here, the journals with non-constant sizes of the general-purpose circuits will be digested (etc. hashing using Blake3) with the circuit constants (`general_purpose_circuit_method_id`, `final_circuit_method_id`, `pre_state`, `post_state`, etc.) in BitVM to ensure the correctness of the claims.
 
 ### Bitcoin
- In the case of Bitcoin, it is the bridge operations (PegIn/PegOut). This requires the proving of the Bitcoin block headers. With `header-chain-circuit`, one can prove the current state of the Bitcoin given the block headers. It does not necessarily prevent the malicious actors to generate proofs for their private forks, but the calculation of the `ChainState` is the basis for the conflict resolution. For more, see:
+ In the case of Bitcoin, the main computations we want to prove are the bridge operations (PegIn/PegOut). This requires the proving of the Bitcoin block headers. With `header-chain-circuit`, one can prove the current state of the Bitcoin given the block headers. It does not necessarily prevent the malicious actors to generate proofs for their private forks, but the calculation of the `ChainState` is the basis for the conflict resolution. For more, see:
  [Proof of work](https://en.bitcoin.it/wiki/Proof_of_work).
 
 
  ## Acknowledgments
-
 - [Risc0](https://github.com/risc0/risc0): This repository is built using the technology stack of Risc0, more specifically Risc0 ZKVM and their STARK verifier Circom circuit.
 - [Blake3 Circom](https://github.com/banyancomputer/hot-proofs-blake3-circom): The Circom circuit of the Blake3 hash function implementation is taken from here.
 - [Bitcoin Header Chain Proof](https://github.com/ZeroSync/header_chain/tree/master/program/src/block_header): Our Bitcoin header chain proof circuit implementation is inspired by the Bitcoin Core implementation and ZeroSync's header chain proof circuit.

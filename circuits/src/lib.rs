@@ -12,7 +12,7 @@ pub trait ZkvmGuest {
     fn verify<T: borsh::BorshSerialize>(&self, method_id: [u32; 8], journal: &T);
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Proof {
     pub method_id: [u32; 8],
     pub journal: Vec<u8>,
@@ -28,6 +28,7 @@ pub trait ZkvmHost {
     fn prove(&self, elf: &[u32]) -> Proof;
 }
 
+#[derive(Debug, Clone)]
 pub struct Risc0Guest;
 
 impl Risc0Guest {

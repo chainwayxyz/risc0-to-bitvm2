@@ -529,6 +529,8 @@ dependencies = [
  "hex",
  "num-bigint 0.4.6",
  "num-traits",
+ "risc0-binfmt",
+ "risc0-circuit-recursion",
  "risc0-groth16",
  "risc0-zkp",
  "risc0-zkvm",

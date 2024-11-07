@@ -215,7 +215,7 @@ fn calculate_work(target: &[u8; 32]) -> U256 {
 }
 
 /// The output of the header chain circuit.
-#[derive(Debug, BorshDeserialize, BorshSerialize)]
+#[derive(Debug, Clone, BorshDeserialize, BorshSerialize)]
 pub struct BlockHeaderCircuitOutput {
     pub method_id: [u32; 8],
     pub chain_state: ChainState,
@@ -223,14 +223,14 @@ pub struct BlockHeaderCircuitOutput {
 
 /// The input proof of the header chain circuit.
 /// The proof can be either None (implying the beginning) or a Succinct Risc0 proof..
-#[derive(Debug, BorshDeserialize, BorshSerialize)]
+#[derive(Debug, Clone, BorshDeserialize, BorshSerialize)]
 pub enum HeaderChainPrevProofType {
     GenesisBlock,
     PrevProof(BlockHeaderCircuitOutput),
 }
 
 /// The input of the header chain circuit.
-#[derive(Debug, BorshDeserialize, BorshSerialize)]
+#[derive(Debug, Clone, BorshDeserialize, BorshSerialize)]
 pub struct HeaderChainCircuitInput {
     pub method_id: [u32; 8],
     pub prev_proof: HeaderChainPrevProofType,
