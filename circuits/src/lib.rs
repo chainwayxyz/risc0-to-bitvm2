@@ -5,6 +5,9 @@ use risc0_zkvm::guest::env::{self};
 
 pub mod header_chain;
 pub use risc0_zkvm;
+pub mod merkle_tree;
+pub mod transaction;
+pub mod utils;
 
 pub trait ZkvmGuest {
     fn read_from_host<T: borsh::BorshDeserialize>(&self) -> T;

@@ -9,6 +9,8 @@ borsh = {version = "1.5.1", features = ["derive"] }
 sha2 =  { version = "0.10.8", default-features = false }
 crypto-bigint = { version = "0.5.5", default-features = false }
 blake3 = { version = "1.5.4", default-features = false }
+bitcoin = "0.32.2"
+serde = { version = "1.0", default-features = false }
 
 [dev-dependencies]
 hex = "0.4.3"

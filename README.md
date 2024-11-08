@@ -90,7 +90,7 @@ Our goal is to be able to (optimistically) prove any computation inside BitVM. O
  [Proof of work](https://en.bitcoin.it/wiki/Proof_of_work).
 
 
- ## Acknowledgments
+## Acknowledgments
 - [Risc0](https://github.com/risc0/risc0): This repository is built using the technology stack of Risc0, more specifically Risc0 ZKVM and their STARK verifier Circom circuit.
 - [Blake3 Circom](https://github.com/banyancomputer/hot-proofs-blake3-circom): The Circom circuit of the Blake3 hash function implementation is taken from here.
 - [Bitcoin Header Chain Proof](https://github.com/ZeroSync/header_chain/tree/master/program/src/block_header): Our Bitcoin header chain proof circuit implementation is inspired by the Bitcoin Core implementation and ZeroSync's header chain proof circuit.
