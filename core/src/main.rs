@@ -7,12 +7,12 @@ use circuits::{
 };
 
 use header_chain_circuit::{HEADER_CHAIN_GUEST_ELF, HEADER_CHAIN_GUEST_ID};
+use risc0_circuit_recursion::control_id::BN254_IDENTITY_CONTROL_ID;
+use risc0_zkvm::sha::Digestible;
 use risc0_zkvm::{ProverOpts, Receipt, SuccinctReceiptVerifierParameters, SystemState};
 use sha2::Digest;
 use sha2::Sha256;
 use std::{env, fs};
-use risc0_zkvm::sha::Digestible;
-use risc0_circuit_recursion::control_id::BN254_IDENTITY_CONTROL_ID;
 
 pub mod docker;
 
@@ -173,7 +173,7 @@ mod tests {
         println!("Journal: {:#?}", receipt.journal);
         let mut constants_blake3_input = [0u8; 32];
         let mut journal_blake3_input = [0u8; 32];
-        
+
         reverse_bits_and_copy(&constants_digest, &mut constants_blake3_input);
         reverse_bits_and_copy(&journal, &mut journal_blake3_input);
         let mut hasher = blake3::Hasher::new();

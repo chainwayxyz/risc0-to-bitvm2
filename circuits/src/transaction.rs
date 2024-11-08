@@ -1,7 +1,6 @@
 /// Code is taken from Citrea
 /// https://github.com/chainwayxyz/citrea/blob/0acb887b1a766fac1a482a68c6d51ecf9661f538/crates/bitcoin-da/src/spec/transaction.rs
 ///
-
 use core::ops::{Deref, DerefMut};
 
 use bitcoin::absolute::LockTime;
@@ -30,10 +29,22 @@ impl BridgeTransaction {
     /// Bitcoin transaction ids, as they are little-endian in the Bitcoin protocol.
     pub fn txid(&self) -> [u8; 32] {
         let mut tx_bytes_vec = vec![];
-        self.inner().version.consensus_encode(&mut tx_bytes_vec).unwrap();
-        self.inner().input.consensus_encode(&mut tx_bytes_vec).unwrap();
-        self.inner().output.consensus_encode(&mut tx_bytes_vec).unwrap();
-        self.inner().lock_time.consensus_encode(&mut tx_bytes_vec).unwrap();
+        self.inner()
+            .version
+            .consensus_encode(&mut tx_bytes_vec)
+            .unwrap();
+        self.inner()
+            .input
+            .consensus_encode(&mut tx_bytes_vec)
+            .unwrap();
+        self.inner()
+            .output
+            .consensus_encode(&mut tx_bytes_vec)
+            .unwrap();
+        self.inner()
+            .lock_time
+            .consensus_encode(&mut tx_bytes_vec)
+            .unwrap();
         calculate_double_sha256(&tx_bytes_vec)
     }
 }
@@ -166,4 +177,3 @@ mod tests {
         );
     }
 }
-    
