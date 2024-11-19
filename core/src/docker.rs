@@ -16,7 +16,10 @@ use std::{
 
 use tempfile::tempdir;
 
-pub fn stark_to_succinct(succinct_receipt: SuccinctReceipt<ReceiptClaim>, journal: &[u8]) -> Seal {
+pub fn stark_to_succinct(
+    succinct_receipt: SuccinctReceipt<ReceiptClaim>,
+    journal: &[u8],
+) -> (Seal, [u8; 31]) {
     let ident_receipt = risc0_zkvm::recursion::identity_p254(&succinct_receipt).unwrap();
     let identity_p254_seal_bytes = ident_receipt.get_seal_bytes();
     let receipt_claim = succinct_receipt.claim.value().unwrap();
@@ -36,6 +39,7 @@ pub fn stark_to_succinct(succinct_receipt: SuccinctReceipt<ReceiptClaim>, journa
     std::fs::write(work_dir.join("seal.r0"), identity_p254_seal_bytes.clone()).unwrap();
     let seal_path = work_dir.join("input.json");
     let proof_path = work_dir.join("proof.json");
+    let output_path = work_dir.join("public.json");
     let mut seal_json = Vec::new();
     to_json(&*identity_p254_seal_bytes, &mut seal_json).unwrap();
     std::fs::write(seal_path.clone(), seal_json).unwrap();
@@ -43,6 +47,7 @@ pub fn stark_to_succinct(succinct_receipt: SuccinctReceipt<ReceiptClaim>, journa
     let pre_state: risc0_zkvm::MaybePruned<SystemState> = receipt_claim.clone().pre;
     println!("pre_state: {:?}", pre_state);
     let pre_state_digest: Digest = pre_state.clone().digest();
+    println!("pre_state_digest: {:?}", pre_state_digest);
     let pre_state_digest_bits: Vec<String> = pre_state_digest
         .as_bytes()
         .iter()
@@ -83,7 +88,7 @@ pub fn stark_to_succinct(succinct_receipt: SuccinctReceipt<ReceiptClaim>, journa
     let a1_dec = to_decimal(&a1_str).unwrap();
     println!("Succinct control root a0 dec: {:?}", a0_dec);
     println!("Succinct control root a1 dec: {:?}", a1_dec);
-
+    println!("CONTROL_ID: {:?}", ident_receipt.control_id);
     let id_bn254_fr_bits: Vec<String> = ident_receipt
         .control_id
         .as_bytes()
@@ -123,9 +128,24 @@ pub fn stark_to_succinct(succinct_receipt: SuccinctReceipt<ReceiptClaim>, journa
         );
     }
     println!("proof_path: {:?}", proof_path);
-    let contents = std::fs::read_to_string(proof_path).unwrap();
-    let proof_json: ProofJson = serde_json::from_str(&contents).unwrap();
-    proof_json.try_into().unwrap()
+    let proof_content = std::fs::read_to_string(proof_path).unwrap();
+    let output_content_dec = std::fs::read_to_string(output_path).unwrap();
+    let proof_json: ProofJson = serde_json::from_str(&proof_content).unwrap();
+    // let output_json: Value = serde_json::from_str(&output_content).unwrap();
+    // Convert output_content_dec from decimal to hex
+    let parsed_json: Value = serde_json::from_str(&output_content_dec).unwrap();
+    let output_str = parsed_json[0].as_str().unwrap(); // Extracts the string from the JSON array
+
+    // Step 2: Convert the decimal string to BigUint and then to hexadecimal
+    let output_content_hex = BigUint::from_str_radix(output_str, 10)
+        .unwrap()
+        .to_str_radix(16);
+
+    // Step 3: Decode the hexadecimal string to a byte vector
+    let output_byte_vec = hex::decode(&output_content_hex).unwrap();
+    // let output_byte_vec = hex::decode(output_hex).unwrap();
+    let output_bytes: [u8; 31] = output_byte_vec.as_slice().try_into().unwrap();
+    (proof_json.try_into().unwrap(), output_bytes)
 }
 
 fn is_docker_installed() -> bool {

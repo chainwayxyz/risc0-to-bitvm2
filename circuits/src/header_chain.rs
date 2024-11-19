@@ -1,4 +1,4 @@
-// Implementation of this module is inspired by the Bitcoin Core source code and from here: 
+// Implementation of this module is inspired by the Bitcoin Core source code and from here:
 // https://github.com/ZeroSync/header_chain/tree/master/program/src/block_header.
 
 /// This module contains the implementation of the header chain circuit, which is basically
@@ -7,6 +7,7 @@
 use crate::ZkvmGuest;
 use borsh::{BorshDeserialize, BorshSerialize};
 use crypto_bigint::{Encoding, U256};
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 /// The minimum amount of work required for a block to be valid (represented as `bits`)
@@ -26,7 +27,7 @@ const BLOCKS_PER_EPOCH: u32 = 2016;
 /// An example serialized header is the genesis block of Bitcoin Mainnet:
 /// `0100000000000000000000000000000000000000000000000000000000000000000000003ba3edfd7a7b12b27ac72c3e67768f617fc81bc3888a51323a9fb8aa4b1e5e4a29ab5f49ffff001d1dac2b7c`,
 /// where:
-/// - `01000000` is the version, 
+/// - `01000000` is the version,
 /// - `0000000000000000000000000000000000000000000000000000000000000000` is the previous block hash,
 /// - `3ba3edfd7a7b12b27ac72c3e67768f617fc81bc3888a51323a9fb8aa4b1e5e4a` is the Merkle root,
 /// - `29ab5f49` is the timestamp,
@@ -35,8 +36,8 @@ const BLOCKS_PER_EPOCH: u32 = 2016;
 /// Here, if you calculate the block hash of the block, you will get:
 /// `6fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d6190000000000`. Here, this representation is in little-endian form, as Bitcoin uses little-endian byte order.
 /// Therefore, one must always be cautious about the byte order when working with Bitcoin block headers.
-/// 
-#[derive(Debug, Clone, BorshDeserialize, BorshSerialize)]
+///
+#[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug, BorshDeserialize, BorshSerialize)]
 pub struct BlockHeader {
     pub version: i32,
     pub prev_block_hash: [u8; 32], // The hash of the previous block in little endian form
@@ -72,7 +73,7 @@ impl BlockHeader {
 }
 
 /// The state of the blockchain
-#[derive(Debug, Clone, BorshDeserialize, BorshSerialize)]
+#[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug, BorshDeserialize, BorshSerialize)]
 pub struct ChainState {
     /// The height of the blockchain
     pub block_height: u32,
@@ -85,7 +86,7 @@ pub struct ChainState {
     /// The time of the first block in the current epoch (the difficulty adjustment timestamp)
     pub epoch_start_time: u32,
     /// The timestamps of the previous 11 blocks
-    pub prev_11_timestamps: [u32; 11], // 
+    pub prev_11_timestamps: [u32; 11], //
 }
 
 /// Calculate the median of an array of 11 elements. Used for the timestamp validation.
@@ -99,14 +100,16 @@ fn median(arr: [u32; 11]) -> u32 {
 }
 
 /// Validates the block time against the median of the previous 11 blocks' timestamps
-fn validate_timestamp(block_time: u32, prev_11_timestamps: [u32; 11]) {
+fn validate_timestamp(block_time: u32, prev_11_timestamps: [u32; 11]) -> bool {
     let median_time = median(prev_11_timestamps);
     if block_time <= median_time {
-        panic!("Block time is not valid");
+        false
+    } else {
+        true
     }
 }
 
-/// Converts the little-endian `bits` field of a block header to a big-endian target 
+/// Converts the little-endian `bits` field of a block header to a big-endian target
 /// value. For example, the bits `0x1d00ffff` is converted to the target
 /// `0x00000000FFFF0000000000000000000000000000000000000000000000000000`.
 /// Here, `"0x1d0ffff".from_be_bytes::<u32>() = 486604799` is the value you would see
@@ -114,23 +117,21 @@ fn validate_timestamp(block_time: u32, prev_11_timestamps: [u32; 11]) {
 /// it will be serialized and used as `486604799.to_le_bytes()`.
 /// Example use:
 /// `bits: u32 = 486604799;
-/// `, 
+/// `,
 /// See https://learnmeabitcoin.com/technical/block/#bits.
-fn bits_to_target(bits: u32) -> [u8; 32] {
+pub fn bits_to_target(bits: u32) -> [u8; 32] {
     println!("Converting bits to target");
     println!("Input: {:?}", bits);
     let size = (bits >> 24) as usize;
     let mantissa = bits & 0x00ffffff;
 
     // Prepare U256 target
-    let target = 
     // If the size is less than or equal to 3, we need to shift the word to the right,
     // but this scenario is not likely in real life
-    if size <= 3 {
-        U256::from(mantissa >> (8 * (3 - size)))
-    } 
     // If the size is greater than 3, we need to shift the mantissa to the left
-    else {
+    let target = if size <= 3 {
+        U256::from(mantissa >> (8 * (3 - size)))
+    } else {
         U256::from(mantissa) << (8 * (size - 3))
     };
     println!("Output: {:?}", target.to_be_bytes());
@@ -160,7 +161,10 @@ fn calculate_new_difficulty(
     current_target: u32,
 ) -> [u8; 32] {
     println!("Calculating new difficulty");
-    println!("Input: epoch_start_time: {}, last_timestamp: {}, current_target: {}", epoch_start_time, last_timestamp, current_target);
+    println!(
+        "Input: epoch_start_time: {}, last_timestamp: {}, current_target: {}",
+        epoch_start_time, last_timestamp, current_target
+    );
     // Step 1: Calculate the actual timespan of the epoch
     let mut actual_timespan = last_timestamp - epoch_start_time;
     if actual_timespan < EXPECTED_EPOCH_TIMESPAN / 4 {
@@ -214,7 +218,7 @@ fn calculate_work(target: &[u8; 32]) -> U256 {
 }
 
 /// The output of the header chain circuit.
-#[derive(Debug, BorshDeserialize, BorshSerialize)]
+#[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug, BorshDeserialize, BorshSerialize)]
 pub struct BlockHeaderCircuitOutput {
     pub method_id: [u32; 8],
     pub chain_state: ChainState,
@@ -222,14 +226,14 @@ pub struct BlockHeaderCircuitOutput {
 
 /// The input proof of the header chain circuit.
 /// The proof can be either None (implying the beginning) or a Succinct Risc0 proof..
-#[derive(Debug, BorshDeserialize, BorshSerialize)]
+#[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug, BorshDeserialize, BorshSerialize)]
 pub enum HeaderChainPrevProofType {
     GenesisBlock,
     PrevProof(BlockHeaderCircuitOutput),
 }
 
 /// The input of the header chain circuit.
-#[derive(Debug, BorshDeserialize, BorshSerialize)]
+#[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug, BorshDeserialize, BorshSerialize)]
 pub struct HeaderChainCircuitInput {
     pub method_id: [u32; 8],
     pub prev_proof: HeaderChainPrevProofType,
@@ -253,7 +257,9 @@ pub fn apply_blocks(chain_state: &mut ChainState, block_headers: Vec<BlockHeader
         // Check 3: Proof of work
         check_hash_valid(new_block_hash, current_target_bytes);
         // Check 4: Check timestamp
-        validate_timestamp(block_header.time, chain_state.prev_11_timestamps);
+        if (!validate_timestamp(block_header.time, chain_state.prev_11_timestamps)) {
+            panic!("Timestamp is not valid");
+        }
 
         chain_state.best_block_hash = new_block_hash;
 
@@ -830,7 +836,6 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "Block time is not valid")]
     fn test_timestamp_check_fail() {
         let block_headers = BLOCK_HEADERS
             .iter()
@@ -842,28 +847,34 @@ mod tests {
             .map(|header| header.time)
             .collect::<Vec<u32>>();
 
-        // The validation is expected to panic
-        validate_timestamp(
-            block_headers[1].time,
-            first_11_timestamps.try_into().unwrap(),
+        // The validation is expected to return false
+        assert_eq!(
+            validate_timestamp(
+                block_headers[1].time,
+                first_11_timestamps.try_into().unwrap(),
+            ),
+            false
         );
     }
 
     #[test]
     fn test_timestamp_check_pass() {
         let block_headers = BLOCK_HEADERS
-        .iter()
-        .map(|header| BlockHeader::try_from_slice(header).unwrap())
-        .collect::<Vec<BlockHeader>>();
+            .iter()
+            .map(|header| BlockHeader::try_from_slice(header).unwrap())
+            .collect::<Vec<BlockHeader>>();
 
         let first_11_timestamps = block_headers[..11]
             .iter()
             .map(|header| header.time)
             .collect::<Vec<u32>>();
 
-        validate_timestamp(
-            block_headers[11].time,
-            first_11_timestamps.clone().try_into().unwrap(),
+        assert_eq!(
+            validate_timestamp(
+                block_headers[11].time,
+                first_11_timestamps.clone().try_into().unwrap(),
+            ),
+            true
         );
     }
 
@@ -900,10 +911,7 @@ mod tests {
             .collect::<Vec<[u8; 32]>>();
 
         for (i, hash) in first_15_hashes.into_iter().enumerate() {
-            check_hash_valid(
-                hash,
-                bits_to_target(block_headers[i].bits),
-            );
+            check_hash_valid(hash, bits_to_target(block_headers[i].bits));
         }
     }
 

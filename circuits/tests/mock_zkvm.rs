@@ -1,13 +1,13 @@
 use circuits::{Proof, ZkvmGuest, ZkvmHost};
 use std::sync::{Arc, Mutex};
 
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 struct ZkvmData {
     values: Vec<u8>,
     journal: Vec<u8>,
 }
 
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct MockZkvmHost {
     data: Arc<Mutex<ZkvmData>>,
 }
