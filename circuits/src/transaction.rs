@@ -12,7 +12,6 @@ use borsh::{BorshDeserialize, BorshSerialize};
 
 use crate::utils::calculate_double_sha256;
 
-/// BridgeTransaction is a wrapper around BlockHash to implement borsh serde
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct BridgeTransaction(pub Transaction);
 
