@@ -321,7 +321,7 @@ pub fn header_chain_circuit(guest: &impl ZkvmGuest) {
 
 /// The method ID for the header chain circuit.
 const HEADER_CHAIN_GUEST_ID: [u32; 8] = [
-    785726750, 2319694325, 2467124832, 3708080889, 1169398785, 2304475553, 3312010205, 540991776,
+    2741372245, 3017055738, 2139632325, 3068928578, 2597929559, 4006376407, 1621941732, 4086000570,
 ];
 
 /// The final circuit that verifies the output of the header chain circuit.

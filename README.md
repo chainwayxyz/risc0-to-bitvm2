@@ -40,17 +40,23 @@ BitVM requires a Groth16 proof with one public input. We have implemented the ne
 
 ## Setup
 
-First download Powers of Tau ceremony files:
+First download the STARK Verify Circom circuit:
 
 ```
-wget -O ./proof/groth16/pot23.ptau https://storage.googleapis.com/zkevm/ptau/powersOfTau28_hez_final_23.ptau
+git lfs pull
+```
+
+Then download Powers of Tau ceremony files:
+
+```
+wget -O ./groth16_proof/groth16/pot23.ptau https://storage.googleapis.com/zkevm/ptau/powersOfTau28_hez_final_23.ptau
 ```
 
 To run the ceremony for `groth16` proof:
 ```
 cd groth16_proof
 docker build -f docker/ceremony.Dockerfile . -t snark-ceremony
-docker run --rm -v $(pwd)/groth16:/ceremony/proof/groth16 snark-ceremony
+docker run --rm -v $(pwd)/groth16:/ceremony/groth16_proof/groth16 snark-ceremony
 ```
 
 To build the prover:

@@ -6,13 +6,13 @@ members = ["circuits", "core", "guests/header-chain", "guests/final-circuit"]
 
 [workspace.dependencies]
 hex = "0.4.3"
-risc0-zkvm = { version="1.1.2", features = ["prove"]}
-risc0-zkp = "1.1.2"
+risc0-zkvm = { version="1.1.3", features = ["prove"]}
+risc0-zkp = "1.1.3"
 env_logger = "0.10"
 serde = "1.0"
 serde_json = "1.0.108"
 anyhow = { version = "1.0", default-features = false}
-risc0-groth16 = {version="1.1.2", features=["prove"]}
+risc0-groth16 = {version="1.1.3", features=["prove"]}
 bitcoin-pow = {path="./risc0_circuits/bitcoin-pow"}
 verify-stark = {path="./risc0_circuits/verify-stark"}
 tempfile = "3.10.1"
