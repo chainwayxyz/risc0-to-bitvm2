@@ -4,7 +4,7 @@
 /// This module contains the implementation of the header chain circuit, which is basically
 /// the Bitcoin header chain verification logic.
 /// WARNING: This implementation is not a word-to-word translation of the Bitcoin Core source code.
-use crate::ZkvmGuest;
+use crate::{mmr_guest::MMRGuest, ZkvmGuest};
 use borsh::{BorshDeserialize, BorshSerialize};
 use crypto_bigint::{Encoding, U256};
 use serde::{Deserialize, Serialize};
@@ -87,6 +87,8 @@ pub struct ChainState {
     pub epoch_start_time: u32,
     /// The timestamps of the previous 11 blocks
     pub prev_11_timestamps: [u32; 11], //
+    /// Block Hashes Merkle Mountain Range
+    pub block_hashes_mmr: MMRGuest,
 }
 
 /// Calculate the median of an array of 11 elements. Used for the timestamp validation.
@@ -262,6 +264,8 @@ pub fn apply_blocks(chain_state: &mut ChainState, block_headers: Vec<BlockHeader
         }
 
         chain_state.best_block_hash = new_block_hash;
+        
+        chain_state.block_hashes_mmr.append(new_block_hash);
 
         total_work = total_work.wrapping_add(&current_work_add);
 
@@ -303,6 +307,7 @@ pub fn header_chain_circuit(guest: &impl ZkvmGuest) {
             current_target_bits: MAX_BITS,
             epoch_start_time: 0,
             prev_11_timestamps: [0u32; 11],
+            block_hashes_mmr: MMRGuest::new(),
         },
         HeaderChainPrevProofType::PrevProof(prev_proof) => {
             assert_eq!(prev_proof.method_id, input.method_id);
