@@ -5,6 +5,11 @@
 /// the Bitcoin header chain verification logic.
 /// WARNING: This implementation is not a word-to-word translation of the Bitcoin Core source code.
 use crate::{mmr_guest::MMRGuest, ZkvmGuest};
+use bitcoin::{
+    block::{Header, Version},
+    hashes::Hash,
+    BlockHash, CompactTarget, TxMerkleNode,
+};
 use borsh::{BorshDeserialize, BorshSerialize};
 use crypto_bigint::{Encoding, U256};
 use serde::{Deserialize, Serialize};
@@ -38,23 +43,23 @@ const BLOCKS_PER_EPOCH: u32 = 2016;
 /// Therefore, one must always be cautious about the byte order when working with Bitcoin block headers.
 ///
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug, BorshDeserialize, BorshSerialize)]
-pub struct BlockHeader {
+pub struct BridgeBlockHeader {
     pub version: i32,
-    pub prev_block_hash: [u8; 32], // The hash of the previous block in little endian form
+    pub prev_block_hash: BridgeBlockHash, // The hash of the previous block in little endian form
     pub merkle_root: [u8; 32], // The Merkle root of the block's transactions in little endian form
     pub time: u32,
     pub bits: u32,
     pub nonce: u32,
 }
 
-impl BlockHeader {
+impl BridgeBlockHeader {
     /// Computes the hash of the block header
-    pub fn compute_block_hash(&self) -> [u8; 32] {
+    pub fn compute_block_hash(&self) -> BridgeBlockHash {
         println!("Computing block hash");
         println!("Input: {:?}", self);
         let mut hasher = Sha256::new(); // Does this takes time? Can we use a global hasher?
         hasher.update(&self.version.to_le_bytes());
-        hasher.update(&self.prev_block_hash);
+        hasher.update(&self.prev_block_hash.to_byte_array());
         hasher.update(&self.merkle_root);
         hasher.update(&self.time.to_le_bytes());
         hasher.update(&self.bits.to_le_bytes());
@@ -68,7 +73,61 @@ impl BlockHeader {
             .try_into()
             .expect("SHA256 should produce a 32-byte output");
         println!("Output: {:?}", result);
-        result
+        BridgeBlockHash(result)
+    }
+}
+
+impl From<Header> for BridgeBlockHeader {
+    fn from(header: Header) -> Self {
+        BridgeBlockHeader {
+            version: header.version.to_consensus(),
+            prev_block_hash: BridgeBlockHash::from(header.prev_blockhash),
+            merkle_root: header.merkle_root.as_raw_hash().to_byte_array(),
+            time: header.time,
+            bits: header.bits.to_consensus(),
+            nonce: header.nonce,
+        }
+    }
+}
+
+impl Into<Header> for BridgeBlockHeader {
+    fn into(self) -> Header {
+        Header {
+            version: Version::from_consensus(self.version),
+            prev_blockhash: self.prev_block_hash.into(),
+            merkle_root: TxMerkleNode::from_slice(&self.merkle_root)
+                .expect("Merkle root is 32 bytes"),
+            time: self.time,
+            bits: CompactTarget::from_consensus(self.bits),
+            nonce: self.nonce,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug, BorshDeserialize, BorshSerialize)]
+pub struct BridgeBlockHash([u8; 32]);
+
+impl BridgeBlockHash {
+    pub fn default() -> Self {
+        BridgeBlockHash([0u8; 32])
+    }
+    pub fn to_byte_array(&self) -> [u8; 32] {
+        self.0
+    }
+    pub fn as_byte_array(&self) -> &[u8; 32] {
+        &self.0
+    }
+}
+
+impl From<BlockHash> for BridgeBlockHash {
+    fn from(hash: BlockHash) -> Self {
+        BridgeBlockHash(*hash.as_byte_array())
+    }
+}
+
+impl Into<BlockHash> for BridgeBlockHash {
+    fn into(self) -> BlockHash {
+        BlockHash::from_slice(&self.to_byte_array()).expect("Block hash is 32 bytes")
     }
 }
 
@@ -80,7 +139,7 @@ pub struct ChainState {
     /// The total work done in the blockchain
     pub total_work: [u8; 32],
     /// The hash of the best block (current tip of the blockchain)
-    pub best_block_hash: [u8; 32],
+    pub best_block_hash: BridgeBlockHash,
     /// The current target bits
     pub current_target_bits: u32,
     /// The time of the first block in the current epoch (the difficulty adjustment timestamp)
@@ -191,7 +250,7 @@ fn calculate_new_difficulty(
 /// Here, the hash is considered valid if it is less than the target.
 /// `target_bytes` is the target in big-endian byte order.
 /// `hash` is the hash in little-endian byte order.
-fn check_hash_valid(hash: [u8; 32], target_bytes: [u8; 32]) {
+fn check_hash_valid(hash: &[u8; 32], target_bytes: &[u8; 32]) {
     println!("Checking hash validity");
     println!("Input: hash: {:?}, target_bytes: {:?}", hash, target_bytes);
     for i in 0..32 {
@@ -239,11 +298,11 @@ pub enum HeaderChainPrevProofType {
 pub struct HeaderChainCircuitInput {
     pub method_id: [u32; 8],
     pub prev_proof: HeaderChainPrevProofType,
-    pub block_headers: Vec<BlockHeader>,
+    pub block_headers: Vec<BridgeBlockHeader>,
 }
 
 /// Applies the given block headers to the chain state.
-pub fn apply_blocks(chain_state: &mut ChainState, block_headers: Vec<BlockHeader>) {
+pub fn apply_blocks(chain_state: &mut ChainState, block_headers: Vec<BridgeBlockHeader>) {
     let mut current_target_bytes = bits_to_target(chain_state.current_target_bits);
     let mut current_work_add = calculate_work(&current_target_bytes);
     let mut total_work = U256::from_be_bytes(chain_state.total_work);
@@ -257,15 +316,17 @@ pub fn apply_blocks(chain_state: &mut ChainState, block_headers: Vec<BlockHeader
         // Check 2: Target bits
         assert_eq!(block_header.bits, chain_state.current_target_bits);
         // Check 3: Proof of work
-        check_hash_valid(new_block_hash, current_target_bytes);
+        check_hash_valid(new_block_hash.as_byte_array(), &current_target_bytes);
         // Check 4: Check timestamp
         if (!validate_timestamp(block_header.time, chain_state.prev_11_timestamps)) {
             panic!("Timestamp is not valid");
         }
 
+        chain_state
+            .block_hashes_mmr
+            .append(new_block_hash.to_byte_array());
+
         chain_state.best_block_hash = new_block_hash;
-        
-        chain_state.block_hashes_mmr.append(new_block_hash);
 
         total_work = total_work.wrapping_add(&current_work_add);
 
@@ -303,7 +364,7 @@ pub fn header_chain_circuit(guest: &impl ZkvmGuest) {
         HeaderChainPrevProofType::GenesisBlock => ChainState {
             block_height: u32::MAX,
             total_work: [0u8; 32],
-            best_block_hash: [0u8; 32],
+            best_block_hash: BridgeBlockHash::default(),
             current_target_bits: MAX_BITS,
             epoch_start_time: 0,
             prev_11_timestamps: [0u32; 11],
@@ -337,7 +398,12 @@ pub fn final_circuit(guest: &impl ZkvmGuest) {
 
     let mut hasher = blake3::Hasher::new();
 
-    hasher.update(&header_chain_circuit_output.chain_state.best_block_hash);
+    hasher.update(
+        &header_chain_circuit_output
+            .chain_state
+            .best_block_hash
+            .to_byte_array(),
+    );
     hasher.update(&header_chain_circuit_output.chain_state.total_work);
     let final_output = hasher.finalize();
 
@@ -807,9 +873,9 @@ mod tests {
         let expected_block_hash =
             hex!("6fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d6190000000000");
 
-        let block_header = BlockHeader {
+        let block_header = BridgeBlockHeader {
             version: 1,
-            prev_block_hash: [0u8; 32],
+            prev_block_hash: BridgeBlockHash::default(),
             merkle_root: merkle_root,
             time: 1231006505,
             bits: 486604799,
@@ -817,15 +883,15 @@ mod tests {
         };
 
         let block_hash = block_header.compute_block_hash();
-        assert_eq!(block_hash, expected_block_hash);
+        assert_eq!(block_hash.to_byte_array(), expected_block_hash);
     }
 
     #[test]
     fn test_15_block_hash_calculation() {
         let block_headers = BLOCK_HEADERS
             .iter()
-            .map(|header| BlockHeader::try_from_slice(header).unwrap())
-            .collect::<Vec<BlockHeader>>();
+            .map(|header| BridgeBlockHeader::try_from_slice(header).unwrap())
+            .collect::<Vec<BridgeBlockHeader>>();
 
         for i in 0..block_headers.len() - 1 {
             let block_hash = block_headers[i].compute_block_hash();
@@ -844,8 +910,8 @@ mod tests {
     fn test_timestamp_check_fail() {
         let block_headers = BLOCK_HEADERS
             .iter()
-            .map(|header| BlockHeader::try_from_slice(header).unwrap())
-            .collect::<Vec<BlockHeader>>();
+            .map(|header| BridgeBlockHeader::try_from_slice(header).unwrap())
+            .collect::<Vec<BridgeBlockHeader>>();
 
         let first_11_timestamps = block_headers[..11]
             .iter()
@@ -866,8 +932,8 @@ mod tests {
     fn test_timestamp_check_pass() {
         let block_headers = BLOCK_HEADERS
             .iter()
-            .map(|header| BlockHeader::try_from_slice(header).unwrap())
-            .collect::<Vec<BlockHeader>>();
+            .map(|header| BridgeBlockHeader::try_from_slice(header).unwrap())
+            .collect::<Vec<BridgeBlockHeader>>();
 
         let first_11_timestamps = block_headers[..11]
             .iter()
@@ -888,18 +954,18 @@ mod tests {
     fn test_hash_check_fail() {
         let block_headers = BLOCK_HEADERS
             .iter()
-            .map(|header| BlockHeader::try_from_slice(header).unwrap())
-            .collect::<Vec<BlockHeader>>();
+            .map(|header| BridgeBlockHeader::try_from_slice(header).unwrap())
+            .collect::<Vec<BridgeBlockHeader>>();
 
         let first_15_hashes = block_headers[..15]
             .iter()
             .map(|header| header.compute_block_hash())
-            .collect::<Vec<[u8; 32]>>();
+            .collect::<Vec<BridgeBlockHash>>();
 
         // The validation is expected to panic
         check_hash_valid(
-            first_15_hashes[0],
-            MAX_TARGET.wrapping_div(&(U256::ONE << 157)).to_be_bytes(),
+            first_15_hashes[0].as_byte_array(),
+            &MAX_TARGET.wrapping_div(&(U256::ONE << 157)).to_be_bytes(),
         );
     }
 
@@ -907,16 +973,16 @@ mod tests {
     fn test_hash_check_pass() {
         let block_headers = BLOCK_HEADERS
             .iter()
-            .map(|header| BlockHeader::try_from_slice(header).unwrap())
-            .collect::<Vec<BlockHeader>>();
+            .map(|header| BridgeBlockHeader::try_from_slice(header).unwrap())
+            .collect::<Vec<BridgeBlockHeader>>();
 
         let first_15_hashes = block_headers[..15]
             .iter()
             .map(|header| header.compute_block_hash())
-            .collect::<Vec<[u8; 32]>>();
+            .collect::<Vec<BridgeBlockHash>>();
 
         for (i, hash) in first_15_hashes.into_iter().enumerate() {
-            check_hash_valid(hash, bits_to_target(block_headers[i].bits));
+            check_hash_valid(hash.as_byte_array(), &bits_to_target(block_headers[i].bits));
         }
     }
 

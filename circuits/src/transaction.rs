@@ -149,6 +149,12 @@ impl From<Transaction> for BridgeTransaction {
     }
 }
 
+impl Into<Transaction> for BridgeTransaction {
+    fn into(self) -> Transaction {
+        self.0
+    }
+}
+
 #[cfg(test)]
 mod tests {
 
