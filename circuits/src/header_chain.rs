@@ -318,7 +318,7 @@ pub fn apply_blocks(chain_state: &mut ChainState, block_headers: Vec<BridgeBlock
         // Check 3: Proof of work
         check_hash_valid(new_block_hash.as_byte_array(), &current_target_bytes);
         // Check 4: Check timestamp
-        if (!validate_timestamp(block_header.time, chain_state.prev_11_timestamps)) {
+        if !validate_timestamp(block_header.time, chain_state.prev_11_timestamps) {
             panic!("Timestamp is not valid");
         }
 
@@ -1016,5 +1016,115 @@ mod tests {
             let bits = target_to_bits(&new_target_bytes);
             assert_eq!(bits, end_target);
         }
+    }
+
+    #[test]
+    fn test_bridge_block_header_from_header() {
+        let header = Header {
+            version: Version::from_consensus(1),
+            prev_blockhash: BlockHash::from_slice(&[0; 32]).unwrap(),
+            merkle_root: TxMerkleNode::from_slice(&[1; 32]).unwrap(),
+            time: 1231006505,
+            bits: CompactTarget::from_consensus(0x1d00ffff),
+            nonce: 2083236893,
+        };
+
+        let bridge_header: BridgeBlockHeader = header.clone().into();
+
+        assert_eq!(bridge_header.version, header.version.to_consensus());
+        assert_eq!(
+            bridge_header.prev_block_hash.to_byte_array(),
+            *header.prev_blockhash.as_byte_array()
+        );
+        assert_eq!(
+            bridge_header.merkle_root,
+            *header.merkle_root.as_byte_array()
+        );
+        assert_eq!(bridge_header.time, header.time);
+        assert_eq!(bridge_header.bits, header.bits.to_consensus());
+        assert_eq!(bridge_header.nonce, header.nonce);
+        assert_eq!(
+            bridge_header.compute_block_hash().as_byte_array(),
+            header.block_hash().as_byte_array()
+        );
+    }
+
+    #[test]
+    fn test_bridge_block_header_into_header() {
+        let bridge_header = BridgeBlockHeader {
+            version: 1,
+            prev_block_hash: BridgeBlockHash([0; 32]),
+            merkle_root: [1; 32],
+            time: 1231006505,
+            bits: 0x1d00ffff,
+            nonce: 2083236893,
+        };
+
+        let header: Header = bridge_header.clone().into();
+
+        assert_eq!(header.version.to_consensus(), bridge_header.version);
+        assert_eq!(
+            *header.prev_blockhash.as_byte_array(),
+            bridge_header.prev_block_hash.to_byte_array()
+        );
+        assert_eq!(
+            *header.merkle_root.as_byte_array(),
+            bridge_header.merkle_root
+        );
+        assert_eq!(header.time, bridge_header.time);
+        assert_eq!(header.bits.to_consensus(), bridge_header.bits);
+        assert_eq!(header.nonce, bridge_header.nonce);
+        assert_eq!(
+            header.block_hash().as_byte_array(),
+            bridge_header.compute_block_hash().as_byte_array()
+        );
+    }
+
+    #[test]
+    fn test_bridge_block_hash_from_block_hash() {
+        let block_hash = BlockHash::from_slice(&[42; 32]).unwrap();
+
+        // Convert to BridgeBlockHash
+        let bridge_hash: BridgeBlockHash = block_hash.clone().into();
+
+        assert_eq!(bridge_hash.to_byte_array(), *block_hash.as_byte_array());
+    }
+
+    #[test]
+    fn test_bridge_block_hash_into_block_hash() {
+        let bridge_hash = BridgeBlockHash([42; 32]);
+
+        let block_hash: BlockHash = bridge_hash.clone().into();
+
+        assert_eq!(*block_hash.as_byte_array(), bridge_hash.to_byte_array());
+    }
+
+    #[test]
+    fn test_roundtrip_header_conversion() {
+        // Create an original Bitcoin header
+        let original_header = Header {
+            version: Version::from_consensus(1),
+            prev_blockhash: BlockHash::from_slice(&[0; 32]).unwrap(),
+            merkle_root: TxMerkleNode::from_slice(&[1; 32]).unwrap(),
+            time: 1231006505,
+            bits: CompactTarget::from_consensus(0x1d00ffff),
+            nonce: 2083236893,
+        };
+
+        let bridge_header: BridgeBlockHeader = original_header.clone().into();
+        let converted_header: Header = bridge_header.into();
+
+        assert_eq!(original_header, converted_header);
+        assert_eq!(original_header.block_hash(), converted_header.block_hash());
+    }
+
+    #[test]
+    fn test_roundtrip_hash_conversion() {
+        let original_hash = BlockHash::from_slice(&[42; 32]).unwrap();
+
+        let bridge_hash: BridgeBlockHash = original_hash.clone().into();
+        let converted_hash: BlockHash = bridge_hash.into();
+
+        assert_eq!(original_hash, converted_hash);
     }
 }

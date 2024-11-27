@@ -157,7 +157,6 @@ impl Into<Transaction> for BridgeTransaction {
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
 
     #[test]
@@ -180,5 +179,107 @@ mod tests {
             hex::encode(txid),
             "a6a150fcdbabaf26040f4dea78ff53d794da2807d8600ead4758b065c5339324"
         );
+    }
+
+    #[test]
+    fn test_from_transaction() {
+        let original_tx = Transaction {
+            version: Version(1),
+            lock_time: LockTime::from_consensus(0),
+            input: vec![],
+            output: vec![],
+        };
+
+        let bridge_tx = BridgeTransaction::from(original_tx.clone());
+        assert_eq!(bridge_tx.inner(), &original_tx);
+
+        let bridge_tx2: BridgeTransaction = original_tx.clone().into();
+        assert_eq!(bridge_tx2.inner(), &original_tx);
+        assert_eq!(bridge_tx.txid(), bridge_tx2.txid());
+        assert_eq!(bridge_tx.compute_txid().to_byte_array(), bridge_tx2.txid());
+    }
+
+    #[test]
+    fn test_into_transaction() {
+        let bridge_tx = BridgeTransaction(Transaction {
+            version: Version(1),
+            lock_time: LockTime::from_consensus(0),
+            input: vec![],
+            output: vec![],
+        });
+
+        let original_tx: Transaction = bridge_tx.clone().into();
+        assert_eq!(&original_tx, bridge_tx.inner());
+        assert_eq!(original_tx.compute_txid().to_byte_array(), bridge_tx.txid());
+    }
+
+    #[test]
+    fn test_borsh_serialization() {
+        let original_tx = Transaction {
+            version: Version(1),
+            lock_time: LockTime::from_consensus(0),
+            input: vec![],
+            output: vec![],
+        };
+        let bridge_tx = BridgeTransaction(original_tx);
+
+        // Serialize
+        let serialized = borsh::to_vec(&bridge_tx).unwrap();
+
+        // Deserialize
+        let deserialized: BridgeTransaction = borsh::from_slice(&serialized).unwrap();
+
+        assert_eq!(bridge_tx, deserialized);
+        assert_eq!(bridge_tx.txid(), deserialized.txid());
+    }
+
+    #[test]
+    fn test_deref_traits() {
+        let mut bridge_tx = BridgeTransaction(Transaction {
+            version: Version(1),
+            lock_time: LockTime::from_consensus(0),
+            input: vec![],
+            output: vec![],
+        });
+
+        assert_eq!(bridge_tx.version, Version(1));
+
+        bridge_tx.version = Version(2);
+        assert_eq!(bridge_tx.version, Version(2));
+    }
+
+    #[test]
+    fn test_complex_transaction() {
+        let script_sig = ScriptBuf::from_bytes(vec![0x76, 0xa9, 0x14]);
+        let script_pubkey = ScriptBuf::from_bytes(vec![0x76, 0xa9, 0x14]);
+
+        let tx = Transaction {
+            version: Version(1),
+            lock_time: LockTime::from_consensus(0),
+            input: vec![TxIn {
+                previous_output: OutPoint {
+                    txid: bitcoin::Txid::from_byte_array([0; 32]),
+                    vout: 0,
+                },
+                script_sig: script_sig.clone(),
+                sequence: Sequence(0xffffffff),
+                witness: Witness::new(),
+            }],
+            output: vec![TxOut {
+                value: Amount::from_sat(50000),
+                script_pubkey: script_pubkey.clone(),
+            }],
+        };
+
+        let bridge_tx = BridgeTransaction(tx.clone());
+
+        assert_eq!(bridge_tx.version, tx.version);
+        assert_eq!(bridge_tx.lock_time, tx.lock_time);
+        assert_eq!(bridge_tx.input.len(), 1);
+        assert_eq!(bridge_tx.output.len(), 1);
+        assert_eq!(bridge_tx.input[0].script_sig, script_sig);
+        assert_eq!(bridge_tx.output[0].script_pubkey, script_pubkey);
+        assert_eq!(bridge_tx.output[0].value, Amount::from_sat(50000));
+        assert_eq!(bridge_tx.txid(), tx.compute_txid().to_byte_array());
     }
 }
