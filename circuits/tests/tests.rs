@@ -5,7 +5,7 @@ mod tests {
     use crate::mock_zkvm::MockZkvmHost;
     use borsh::BorshDeserialize;
     use circuits::header_chain::{
-        header_chain_circuit, BlockHeaderCircuitOutput, BridgeBlockHeader, HeaderChainCircuitInput,
+        header_chain_circuit, BlockHeaderCircuitOutput, CircuitBlockHeader, HeaderChainCircuitInput,
     };
     use circuits::ZkvmHost;
 
@@ -15,8 +15,8 @@ mod tests {
         let headers = include_bytes!("../../headers.bin");
         let headers = headers
             .chunks(80)
-            .map(|header| BridgeBlockHeader::try_from_slice(header).unwrap())
-            .collect::<Vec<BridgeBlockHeader>>();
+            .map(|header| CircuitBlockHeader::try_from_slice(header).unwrap())
+            .collect::<Vec<CircuitBlockHeader>>();
 
         let host = MockZkvmHost::new();
 

@@ -1,7 +1,7 @@
 use borsh::BorshDeserialize;
 use circuits::{
     header_chain::{
-        BlockHeaderCircuitOutput, BridgeBlockHeader, HeaderChainCircuitInput,
+        BlockHeaderCircuitOutput, CircuitBlockHeader, HeaderChainCircuitInput,
         HeaderChainPrevProofType,
     },
     risc0_zkvm::{default_prover, ExecutorEnv},
@@ -33,8 +33,8 @@ fn main() {
     let headers = include_bytes!("../../headers.bin");
     let headers = headers
         .chunks(80)
-        .map(|header| BridgeBlockHeader::try_from_slice(header).unwrap())
-        .collect::<Vec<BridgeBlockHeader>>();
+        .map(|header| CircuitBlockHeader::try_from_slice(header).unwrap())
+        .collect::<Vec<CircuitBlockHeader>>();
 
     // Set the previous proof type based on input_proof argument
     let prev_receipt = if input_proof.to_lowercase() == "none" {
