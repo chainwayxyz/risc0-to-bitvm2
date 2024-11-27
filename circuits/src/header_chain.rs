@@ -15,11 +15,21 @@ use crypto_bigint::{Encoding, U256};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-/// The minimum amount of work required for a block to be valid (represented as `bits`)
-const MAX_BITS: u32 = 0x1d00FFFF;
-/// The maximum target value, which corresponds to the minimum difficulty
+/// The minimum amount of work required for a block to be valid (represented as `bits`).
+/// Changes from Network to Network.
+const MAX_BITS: u32 = 0x1D00FFFF;
+const MAX_BITS_SIGNET: u32 = 0x1E0377AE;
+const MAX_BITS_REGTEST: u32 = 0x207FFFFF;
+/// The maximum target value, which corresponds to the minimum difficulty.
+/// Changes from Network to Network.
 const MAX_TARGET: U256 =
     U256::from_be_hex("00000000FFFF0000000000000000000000000000000000000000000000000000");
+
+const MAX_TARGET_SIGNET: U256 =
+    U256::from_be_hex("00000377AE000000000000000000000000000000000000000000000000000000");
+
+const MAX_TARGET_REGTEST: U256 =
+    U256::from_be_hex("7FFFFF0000000000000000000000000000000000000000000000000000000000");
 
 /// An epoch should be two weeks (represented as number of seconds)
 /// seconds/minute * minutes/hour * hours/day * 14 days
@@ -252,6 +262,92 @@ fn calculate_work(target: &[u8; 32]) -> U256 {
     work
 }
 
+/// Applies a list of block headers to the blockchain state.
+pub fn apply_blocks(chain_state: &mut ChainState, block_headers: Vec<CircuitBlockHeader>) {
+    let mut current_target_bytes = if cfg!(feature = "regtest") {
+        MAX_TARGET_REGTEST.to_be_bytes()
+    } else {
+        bits_to_target(chain_state.current_target_bits)
+    };
+
+    let mut current_work_add = calculate_work(&current_target_bytes);
+    let mut total_work = U256::from_be_bytes(chain_state.total_work);
+    let mut last_block_time = if cfg!(feature = "testnet4") {
+        if chain_state.block_height == u32::MAX {
+            0
+        } else {
+            chain_state.prev_11_timestamps[chain_state.block_height as usize % 11]
+        }
+    } else {
+        0
+    };
+
+    for block_header in block_headers {
+        let (target_to_use, expected_bits, work_to_add) =
+            if cfg!(feature = "testnet4") && block_header.time > last_block_time + 1200 {
+                let max_target_bytes = MAX_TARGET.to_be_bytes();
+                (
+                    max_target_bytes,
+                    target_to_bits(&max_target_bytes),
+                    calculate_work(&max_target_bytes),
+                )
+            } else {
+                (
+                    current_target_bytes,
+                    chain_state.current_target_bits,
+                    current_work_add,
+                )
+            };
+
+        let new_block_hash = block_header.compute_block_hash();
+
+        assert_eq!(block_header.prev_block_hash, chain_state.best_block_hash);
+        assert_eq!(
+            block_header.bits,
+            if cfg!(feature = "regtest") {
+                MAX_BITS
+            } else {
+                expected_bits
+            }
+        );
+
+        check_hash_valid(&new_block_hash, &target_to_use);
+
+        if !validate_timestamp(block_header.time, chain_state.prev_11_timestamps) {
+            panic!("Timestamp is not valid");
+        }
+
+        chain_state.block_hashes_mmr.append(new_block_hash);
+        chain_state.best_block_hash = new_block_hash;
+        total_work = total_work.wrapping_add(&work_to_add);
+        chain_state.block_height = chain_state.block_height.wrapping_add(1);
+
+        if !cfg!(feature = "regtest") && chain_state.block_height % BLOCKS_PER_EPOCH == 0 {
+            chain_state.epoch_start_time = block_header.time;
+        }
+
+        chain_state.prev_11_timestamps[chain_state.block_height as usize % 11] = block_header.time;
+        if cfg!(feature = "testnet4") {
+            last_block_time = block_header.time;
+        }
+
+        if !cfg!(feature = "regtest")
+            && chain_state.block_height % BLOCKS_PER_EPOCH == BLOCKS_PER_EPOCH - 1
+        {
+            current_target_bytes = calculate_new_difficulty(
+                chain_state.epoch_start_time,
+                block_header.time,
+                chain_state.current_target_bits,
+            );
+
+            chain_state.current_target_bits = target_to_bits(&current_target_bytes);
+            current_work_add = calculate_work(&current_target_bytes);
+        }
+    }
+
+    chain_state.total_work = total_work.to_be_bytes();
+}
+
 /// The output of the header chain circuit.
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug, BorshDeserialize, BorshSerialize)]
 pub struct BlockHeaderCircuitOutput {
@@ -273,59 +369,6 @@ pub struct HeaderChainCircuitInput {
     pub method_id: [u32; 8],
     pub prev_proof: HeaderChainPrevProofType,
     pub block_headers: Vec<CircuitBlockHeader>,
-}
-
-/// Applies the given block headers to the chain state.
-pub fn apply_blocks(chain_state: &mut ChainState, block_headers: Vec<CircuitBlockHeader>) {
-    let mut current_target_bytes = bits_to_target(chain_state.current_target_bits);
-    let mut current_work_add = calculate_work(&current_target_bytes);
-    let mut total_work = U256::from_be_bytes(chain_state.total_work);
-
-    for block_header in block_headers {
-        // calculate the new block hash
-        let new_block_hash = block_header.compute_block_hash();
-
-        // Check 1: Previous block hash
-        assert_eq!(block_header.prev_block_hash, chain_state.best_block_hash);
-        // Check 2: Target bits
-        assert_eq!(block_header.bits, chain_state.current_target_bits);
-        // Check 3: Proof of work
-        check_hash_valid(&new_block_hash, &current_target_bytes);
-        // Check 4: Check timestamp
-        if !validate_timestamp(block_header.time, chain_state.prev_11_timestamps) {
-            panic!("Timestamp is not valid");
-        }
-
-        chain_state.block_hashes_mmr.append(new_block_hash);
-
-        chain_state.best_block_hash = new_block_hash;
-
-        total_work = total_work.wrapping_add(&current_work_add);
-
-        // We use wrapping_add here because the genesis block height is 0
-        chain_state.block_height = chain_state.block_height.wrapping_add(1);
-
-        // Update the epoch start time and the previous 11 timestamps
-        if chain_state.block_height % BLOCKS_PER_EPOCH == 0 {
-            chain_state.epoch_start_time = block_header.time;
-        }
-
-        chain_state.prev_11_timestamps[chain_state.block_height as usize % 11] = block_header.time;
-
-        // Update the current target
-        if chain_state.block_height % BLOCKS_PER_EPOCH == BLOCKS_PER_EPOCH - 1 {
-            current_target_bytes = calculate_new_difficulty(
-                chain_state.epoch_start_time,
-                block_header.time,
-                chain_state.current_target_bits,
-            );
-
-            chain_state.current_target_bits = target_to_bits(&current_target_bytes);
-            current_work_add = calculate_work(&current_target_bytes);
-        }
-    }
-
-    chain_state.total_work = total_work.to_be_bytes();
 }
 
 /// The main entry point of the header chain circuit.
