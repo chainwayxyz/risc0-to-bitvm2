@@ -1,6 +1,8 @@
 // Implementation of this module is inspired by the Bitcoin Core source code and from here:
 // https://github.com/ZeroSync/header_chain/tree/master/program/src/block_header.
 
+use std::env;
+
 /// This module contains the implementation of the header chain circuit, which is basically
 /// the Bitcoin header chain verification logic.
 /// WARNING: This implementation is not a word-to-word translation of the Bitcoin Core source code.
@@ -15,21 +17,44 @@ use crypto_bigint::{Encoding, U256};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-/// The minimum amount of work required for a block to be valid (represented as `bits`).
-/// Changes from Network to Network.
-const MAX_BITS: u32 = 0x1D00FFFF;
-const MAX_BITS_SIGNET: u32 = 0x1E0377AE;
-const MAX_BITS_REGTEST: u32 = 0x207FFFFF;
-/// The maximum target value, which corresponds to the minimum difficulty.
-/// Changes from Network to Network.
-const MAX_TARGET: U256 =
-    U256::from_be_hex("00000000FFFF0000000000000000000000000000000000000000000000000000");
+/// Network configuration holder for Bitcoin-specific constants
+#[derive(Debug)]
+pub struct NetworkConstants {
+    pub max_bits: u32,
+    pub max_target: U256,
+}
 
-const MAX_TARGET_SIGNET: U256 =
-    U256::from_be_hex("00000377AE000000000000000000000000000000000000000000000000000000");
-
-const MAX_TARGET_REGTEST: U256 =
-    U256::from_be_hex("7FFFFF0000000000000000000000000000000000000000000000000000000000");
+impl NetworkConstants {
+    pub fn from_network() -> Self {
+        match option_env!("BITCOIN_NETWORK").unwrap_or("mainnet") {
+            "mainnet" => NetworkConstants {
+                max_bits: 0x1D00FFFF,
+                max_target: U256::from_be_hex(
+                    "00000000FFFF0000000000000000000000000000000000000000000000000000",
+                ),
+            },
+            "signet" => NetworkConstants {
+                max_bits: 0x1E0377AE,
+                max_target: U256::from_be_hex(
+                    "00000377AE000000000000000000000000000000000000000000000000000000",
+                ),
+            },
+            "regtest" => NetworkConstants {
+                max_bits: 0x207FFFFF,
+                max_target: U256::from_be_hex(
+                    "7FFFFF0000000000000000000000000000000000000000000000000000000000",
+                ),
+            },
+            "testnet4" => NetworkConstants {
+                max_bits: 0x1D00FFFF,
+                max_target: U256::from_be_hex(
+                    "00000000FFFF0000000000000000000000000000000000000000000000000000",
+                ),
+            },
+            _ => panic!("Invalid BITCOIN_NETWORK environment variable"),
+        }
+    }
+}
 
 /// An epoch should be two weeks (represented as number of seconds)
 /// seconds/minute * minutes/hour * hours/day * 14 days
@@ -67,7 +92,7 @@ impl CircuitBlockHeader {
     pub fn compute_block_hash(&self) -> [u8; 32] {
         println!("Computing block hash");
         println!("Input: {:?}", self);
-        let mut hasher = Sha256::new(); // Does this takes time? Can we use a global hasher?
+        let mut hasher = Sha256::new();
         hasher.update(&self.version.to_le_bytes());
         hasher.update(&self.prev_block_hash);
         hasher.update(&self.merkle_root);
@@ -129,7 +154,7 @@ pub struct ChainState {
     /// The time of the first block in the current epoch (the difficulty adjustment timestamp)
     pub epoch_start_time: u32,
     /// The timestamps of the previous 11 blocks
-    pub prev_11_timestamps: [u32; 11], //
+    pub prev_11_timestamps: [u32; 11],
     /// Block Hashes Merkle Mountain Range
     pub block_hashes_mmr: MMRGuest,
 }
@@ -157,13 +182,6 @@ fn validate_timestamp(block_time: u32, prev_11_timestamps: [u32; 11]) -> bool {
 /// Converts the little-endian `bits` field of a block header to a big-endian target
 /// value. For example, the bits `0x1d00ffff` is converted to the target
 /// `0x00000000FFFF0000000000000000000000000000000000000000000000000000`.
-/// Here, `"0x1d0ffff".from_be_bytes::<u32>() = 486604799` is the value you would see
-/// when working with the RPC interface of a Bitcoin node. But when computing the block hash,
-/// it will be serialized and used as `486604799.to_le_bytes()`.
-/// Example use:
-/// `bits: u32 = 486604799;
-/// `,
-/// See https://learnmeabitcoin.com/technical/block/#bits.
 pub fn bits_to_target(bits: u32) -> [u8; 32] {
     println!("Converting bits to target");
     println!("Input: {:?}", bits);
@@ -171,9 +189,6 @@ pub fn bits_to_target(bits: u32) -> [u8; 32] {
     let mantissa = bits & 0x00ffffff;
 
     // Prepare U256 target
-    // If the size is less than or equal to 3, we need to shift the word to the right,
-    // but this scenario is not likely in real life
-    // If the size is greater than 3, we need to shift the mantissa to the left
     let target = if size <= 3 {
         U256::from(mantissa >> (8 * (3 - size)))
     } else {
@@ -223,35 +238,28 @@ fn calculate_new_difficulty(
         .wrapping_mul(&U256::from(actual_timespan))
         .wrapping_div(&U256::from(EXPECTED_EPOCH_TIMESPAN));
     // Step 3: Clamp the new target to the maximum target
-    if new_target > MAX_TARGET {
-        new_target = MAX_TARGET;
+    let network = NetworkConstants::from_network();
+    if new_target > network.max_target {
+        new_target = network.max_target;
     }
     println!("Output: {:?}", new_target.to_be_bytes());
     new_target.to_be_bytes()
 }
 
 /// Checks the validity of a block hash by comparing it to the target byte by byte.
-/// Here, the hash is considered valid if it is less than the target.
-/// `target_bytes` is the target in big-endian byte order.
-/// `hash` is the hash in little-endian byte order.
 fn check_hash_valid(hash: &[u8; 32], target_bytes: &[u8; 32]) {
     println!("Checking hash validity");
     println!("Input: hash: {:?}, target_bytes: {:?}", hash, target_bytes);
     for i in 0..32 {
         if hash[31 - i] < target_bytes[i] {
-            // The hash is valid because a byte in hash is less than the corresponding byte in target
             return;
         } else if hash[31 - i] > target_bytes[i] {
-            // The hash is invalid because a byte in hash is greater than the corresponding byte in target
             panic!("Hash is not valid");
         }
-        // If the bytes are equal, continue to the next byte
     }
-    // If we reach this point, all bytes are equal, so the hash is valid
 }
 
-/// Calculates the work done for a block hash that satisfies a given.
-/// Should use the `bits` field of the block header to calculate the target.
+/// Calculates the work done for a block hash that satisfies a given target.
 fn calculate_work(target: &[u8; 32]) -> U256 {
     println!("Calculating work");
     println!("Input: {:?}", target);
@@ -264,15 +272,19 @@ fn calculate_work(target: &[u8; 32]) -> U256 {
 
 /// Applies a list of block headers to the blockchain state.
 pub fn apply_blocks(chain_state: &mut ChainState, block_headers: Vec<CircuitBlockHeader>) {
-    let mut current_target_bytes = if cfg!(feature = "regtest") {
-        MAX_TARGET_REGTEST.to_be_bytes()
+    let network = NetworkConstants::from_network();
+    let is_testnet4 = option_env!("BITCOIN_NETWORK").unwrap_or("mainnet") == "testnet4";
+    let is_regtest = option_env!("BITCOIN_NETWORK").unwrap_or("mainnet") == "regtest";
+
+    let mut current_target_bytes = if is_regtest {
+        network.max_target.to_be_bytes()
     } else {
         bits_to_target(chain_state.current_target_bits)
     };
 
     let mut current_work_add = calculate_work(&current_target_bytes);
     let mut total_work = U256::from_be_bytes(chain_state.total_work);
-    let mut last_block_time = if cfg!(feature = "testnet4") {
+    let mut last_block_time = if is_testnet4 {
         if chain_state.block_height == u32::MAX {
             0
         } else {
@@ -284,8 +296,8 @@ pub fn apply_blocks(chain_state: &mut ChainState, block_headers: Vec<CircuitBloc
 
     for block_header in block_headers {
         let (target_to_use, expected_bits, work_to_add) =
-            if cfg!(feature = "testnet4") && block_header.time > last_block_time + 1200 {
-                let max_target_bytes = MAX_TARGET.to_be_bytes();
+            if is_testnet4 && block_header.time > last_block_time + 1200 {
+                let max_target_bytes = network.max_target.to_be_bytes();
                 (
                     max_target_bytes,
                     target_to_bits(&max_target_bytes),
@@ -304,8 +316,8 @@ pub fn apply_blocks(chain_state: &mut ChainState, block_headers: Vec<CircuitBloc
         assert_eq!(block_header.prev_block_hash, chain_state.best_block_hash);
         assert_eq!(
             block_header.bits,
-            if cfg!(feature = "regtest") {
-                MAX_BITS
+            if is_regtest {
+                network.max_bits
             } else {
                 expected_bits
             }
@@ -322,18 +334,16 @@ pub fn apply_blocks(chain_state: &mut ChainState, block_headers: Vec<CircuitBloc
         total_work = total_work.wrapping_add(&work_to_add);
         chain_state.block_height = chain_state.block_height.wrapping_add(1);
 
-        if !cfg!(feature = "regtest") && chain_state.block_height % BLOCKS_PER_EPOCH == 0 {
+        if !is_regtest && chain_state.block_height % BLOCKS_PER_EPOCH == 0 {
             chain_state.epoch_start_time = block_header.time;
         }
 
         chain_state.prev_11_timestamps[chain_state.block_height as usize % 11] = block_header.time;
-        if cfg!(feature = "testnet4") {
+        if is_testnet4 {
             last_block_time = block_header.time;
         }
 
-        if !cfg!(feature = "regtest")
-            && chain_state.block_height % BLOCKS_PER_EPOCH == BLOCKS_PER_EPOCH - 1
-        {
+        if !is_regtest && chain_state.block_height % BLOCKS_PER_EPOCH == BLOCKS_PER_EPOCH - 1 {
             current_target_bytes = calculate_new_difficulty(
                 chain_state.epoch_start_time,
                 block_header.time,
@@ -374,13 +384,14 @@ pub struct HeaderChainCircuitInput {
 /// The main entry point of the header chain circuit.
 pub fn header_chain_circuit(guest: &impl ZkvmGuest) {
     let input: HeaderChainCircuitInput = guest.read_from_host();
+    let network = NetworkConstants::from_network();
 
     let mut chain_state = match input.prev_proof {
         HeaderChainPrevProofType::GenesisBlock => ChainState {
             block_height: u32::MAX,
             total_work: [0u8; 32],
             best_block_hash: [0u8; 32],
-            current_target_bits: MAX_BITS,
+            current_target_bits: network.max_bits,
             epoch_start_time: 0,
             prev_11_timestamps: [0u32; 11],
             block_hashes_mmr: MMRGuest::new(),
@@ -402,7 +413,14 @@ pub fn header_chain_circuit(guest: &impl ZkvmGuest) {
 
 /// The method ID for the header chain circuit.
 const HEADER_CHAIN_GUEST_ID: [u32; 8] = [
-    2741372245, 3017055738, 2139632325, 3068928578, 2597929559, 4006376407, 1621941732, 4086000570,
+    314380159,
+    885575231,
+    2520661404,
+    2612034589,
+    815119798,
+    1189953802,
+    2907962186,
+    4273545664,
 ];
 
 /// The final circuit that verifies the output of the header chain circuit.
@@ -963,6 +981,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "Hash is not valid")]
     fn test_hash_check_fail() {
+        let network = NetworkConstants::from_network();
         let block_headers = BLOCK_HEADERS
             .iter()
             .map(|header| CircuitBlockHeader::try_from_slice(header).unwrap())
@@ -976,7 +995,10 @@ mod tests {
         // The validation is expected to panic
         check_hash_valid(
             &first_15_hashes[0],
-            &MAX_TARGET.wrapping_div(&(U256::ONE << 157)).to_be_bytes(),
+            &network
+                .max_target
+                .wrapping_div(&(U256::ONE << 157))
+                .to_be_bytes(),
         );
     }
 
@@ -1093,7 +1115,6 @@ mod tests {
 
     #[test]
     fn test_roundtrip_header_conversion() {
-        // Create an original Bitcoin header
         let original_header = Header {
             version: Version::from_consensus(1),
             prev_blockhash: BlockHash::from_slice(&[0; 32]).unwrap(),
