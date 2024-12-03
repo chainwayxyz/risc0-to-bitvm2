@@ -4,7 +4,6 @@ use risc0_build::{DockerOptions, GuestOptions};
 fn main() {
    println!("cargo:rerun-if-env-changed=REPR_GUEST_BUILD");
    println!("cargo:rerun-if-env-changed=OUT_DIR");
-   println!("cargo:rerun-if-env-changed=BITCOIN_NETWORK");
 
    let mut options = HashMap::new();
 
@@ -26,14 +25,13 @@ fn main() {
        None
    };
 
-   println!("cargo:rustc-env=CARGO_FEATURE_{}", bitcoin_network.to_uppercase());
+//    println!("cargo:rustc-env=CARGO_FEATURE_{}", bitcoin_network.to_uppercase());
    println!("cargo:rustc-cfg=feature=\"{}\"", bitcoin_network);
 
    options.insert(
        "header-chain-guest",
        GuestOptions {
            use_docker,
-           features: vec!["default".to_string(), "mainnet".to_string(), "signet".to_string(), "testnet4".to_string(), "regtest".to_string()],
            ..Default::default()
        },
    );
