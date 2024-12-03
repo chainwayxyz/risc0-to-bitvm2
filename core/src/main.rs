@@ -30,7 +30,7 @@ fn main() {
     let batch_size: usize = args[3].parse().expect("Batch size should be a number");
 
     // Download the headers.bin file from https://zerosync.org/chaindata/headers.bin
-    let headers = include_bytes!("../../headers.bin");
+    let headers = include_bytes!("../../signet-headers.bin");
     let headers = headers
         .chunks(80)
         .map(|header| CircuitBlockHeader::try_from_slice(header).unwrap())

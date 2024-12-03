@@ -25,33 +25,56 @@ pub struct NetworkConstants {
 }
 
 impl NetworkConstants {
-    pub fn from_network() -> Self {
-        match option_env!("BITCOIN_NETWORK").unwrap_or("mainnet") {
-            "mainnet" => NetworkConstants {
+    pub const fn from_network() -> Self {
+        #[cfg(bitcoin_network = "mainnet")]
+        {
+            NetworkConstants {
                 max_bits: 0x1D00FFFF,
                 max_target: U256::from_be_hex(
                     "00000000FFFF0000000000000000000000000000000000000000000000000000",
                 ),
-            },
-            "signet" => NetworkConstants {
+            }
+        }
+        #[cfg(bitcoin_network = "signet")]
+        {
+            NetworkConstants {
                 max_bits: 0x1E0377AE,
                 max_target: U256::from_be_hex(
                     "00000377AE000000000000000000000000000000000000000000000000000000",
                 ),
-            },
-            "regtest" => NetworkConstants {
+            }
+        }
+        #[cfg(bitcoin_network = "regtest")]
+        {
+            NetworkConstants {
                 max_bits: 0x207FFFFF,
                 max_target: U256::from_be_hex(
                     "7FFFFF0000000000000000000000000000000000000000000000000000000000",
                 ),
-            },
-            "testnet4" => NetworkConstants {
+            }
+        }
+        #[cfg(bitcoin_network = "testnet4")]
+        {
+            NetworkConstants {
                 max_bits: 0x1D00FFFF,
                 max_target: U256::from_be_hex(
                     "00000000FFFF0000000000000000000000000000000000000000000000000000",
                 ),
-            },
-            _ => panic!("Invalid BITCOIN_NETWORK environment variable"),
+            }
+        }
+        // If none, default to mainnet
+        #[cfg(not(any(
+            bitcoin_network = "signet",
+            bitcoin_network = "regtest",
+            bitcoin_network = "testnet4"
+        )))]
+        {
+            NetworkConstants {
+                max_bits: 0x1D00FFFF,
+                max_target: U256::from_be_hex(
+                    "00000000FFFF0000000000000000000000000000000000000000000000000000",
+                ),
+            }
         }
     }
 }
@@ -272,32 +295,28 @@ fn calculate_work(target: &[u8; 32]) -> U256 {
 
 /// Applies a list of block headers to the blockchain state.
 pub fn apply_blocks(chain_state: &mut ChainState, block_headers: Vec<CircuitBlockHeader>) {
-    let network = NetworkConstants::from_network();
-    let is_testnet4 = option_env!("BITCOIN_NETWORK").unwrap_or("mainnet") == "testnet4";
-    let is_regtest = option_env!("BITCOIN_NETWORK").unwrap_or("mainnet") == "regtest";
-
-    let mut current_target_bytes = if is_regtest {
-        network.max_target.to_be_bytes()
-    } else {
-        bits_to_target(chain_state.current_target_bits)
-    };
+    const NETWORK: NetworkConstants = NetworkConstants::from_network();
+    
+    #[cfg(bitcoin_network = "regtest")]
+    let current_target_bytes = NETWORK.max_target.to_be_bytes();
+    #[cfg(not(bitcoin_network = "regtest"))]
+    let mut current_target_bytes = bits_to_target(chain_state.current_target_bits);
 
     let mut current_work_add = calculate_work(&current_target_bytes);
     let mut total_work = U256::from_be_bytes(chain_state.total_work);
-    let mut last_block_time = if is_testnet4 {
-        if chain_state.block_height == u32::MAX {
-            0
-        } else {
-            chain_state.prev_11_timestamps[chain_state.block_height as usize % 11]
-        }
-    } else {
+    
+    #[cfg(bitcoin_network = "testnet4")]
+    let mut last_block_time = if chain_state.block_height == u32::MAX {
         0
+    } else {
+        chain_state.prev_11_timestamps[chain_state.block_height as usize % 11]
     };
 
     for block_header in block_headers {
-        let (target_to_use, expected_bits, work_to_add) =
-            if is_testnet4 && block_header.time > last_block_time + 1200 {
-                let max_target_bytes = network.max_target.to_be_bytes();
+        #[cfg(bitcoin_network = "testnet4")]
+        let (target_to_use, expected_bits, work_to_add) = {
+            if block_header.time > last_block_time + 1200 {
+                let max_target_bytes = NETWORK.max_target.to_be_bytes();
                 (
                     max_target_bytes,
                     target_to_bits(&max_target_bytes),
@@ -309,19 +328,24 @@ pub fn apply_blocks(chain_state: &mut ChainState, block_headers: Vec<CircuitBloc
                     chain_state.current_target_bits,
                     current_work_add,
                 )
-            };
+            }
+        };
+
+        #[cfg(not(bitcoin_network = "testnet4"))]
+        let (target_to_use, expected_bits, work_to_add) = (
+            current_target_bytes,
+            chain_state.current_target_bits,
+            current_work_add,
+        );
 
         let new_block_hash = block_header.compute_block_hash();
 
         assert_eq!(block_header.prev_block_hash, chain_state.best_block_hash);
-        assert_eq!(
-            block_header.bits,
-            if is_regtest {
-                network.max_bits
-            } else {
-                expected_bits
-            }
-        );
+        
+        #[cfg(bitcoin_network = "regtest")]
+        assert_eq!(block_header.bits, NETWORK.max_bits);
+        #[cfg(not(bitcoin_network = "regtest"))]
+        assert_eq!(block_header.bits, expected_bits);
 
         check_hash_valid(&new_block_hash, &target_to_use);
 
@@ -334,16 +358,20 @@ pub fn apply_blocks(chain_state: &mut ChainState, block_headers: Vec<CircuitBloc
         total_work = total_work.wrapping_add(&work_to_add);
         chain_state.block_height = chain_state.block_height.wrapping_add(1);
 
-        if !is_regtest && chain_state.block_height % BLOCKS_PER_EPOCH == 0 {
+        #[cfg(not(bitcoin_network = "regtest"))]
+        if chain_state.block_height % BLOCKS_PER_EPOCH == 0 {
             chain_state.epoch_start_time = block_header.time;
         }
 
         chain_state.prev_11_timestamps[chain_state.block_height as usize % 11] = block_header.time;
-        if is_testnet4 {
+        
+        #[cfg(bitcoin_network = "testnet4")]
+        {
             last_block_time = block_header.time;
         }
 
-        if !is_regtest && chain_state.block_height % BLOCKS_PER_EPOCH == BLOCKS_PER_EPOCH - 1 {
+        #[cfg(not(bitcoin_network = "regtest"))]
+        if chain_state.block_height % BLOCKS_PER_EPOCH == BLOCKS_PER_EPOCH - 1 {
             current_target_bytes = calculate_new_difficulty(
                 chain_state.epoch_start_time,
                 block_header.time,
@@ -385,7 +413,8 @@ pub struct HeaderChainCircuitInput {
 pub fn header_chain_circuit(guest: &impl ZkvmGuest) {
     let input: HeaderChainCircuitInput = guest.read_from_host();
     let network = NetworkConstants::from_network();
-
+    println!("Network constants: {:?}", network);
+    // println!("Detected network: {:?}", option_env!("bitcoin_network"));
     let mut chain_state = match input.prev_proof {
         HeaderChainPrevProofType::GenesisBlock => ChainState {
             block_height: u32::MAX,
@@ -413,14 +442,7 @@ pub fn header_chain_circuit(guest: &impl ZkvmGuest) {
 
 /// The method ID for the header chain circuit.
 const HEADER_CHAIN_GUEST_ID: [u32; 8] = [
-    314380159,
-    885575231,
-    2520661404,
-    2612034589,
-    815119798,
-    1189953802,
-    2907962186,
-    4273545664,
+    314380159, 885575231, 2520661404, 2612034589, 815119798, 1189953802, 2907962186, 4273545664,
 ];
 
 /// The final circuit that verifies the output of the header chain circuit.
