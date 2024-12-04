@@ -19,10 +19,18 @@ pub mod docker;
 
 const HEADERS: &[u8] = {
     match option_env!("BITCOIN_NETWORK") {
-        Some(network) if matches!(network.as_bytes(), b"mainnet") => include_bytes!("../../mainnet-headers.bin"),
-        Some(network) if matches!(network.as_bytes(), b"testnet4") => include_bytes!("../../testnet4-headers.bin"),
-        Some(network) if matches!(network.as_bytes(), b"signet") => include_bytes!("../../signet-headers.bin"),
-        Some(network) if matches!(network.as_bytes(), b"regtest") => include_bytes!("../../regtest-headers.bin"),
+        Some(network) if matches!(network.as_bytes(), b"mainnet") => {
+            include_bytes!("../../mainnet-headers.bin")
+        }
+        Some(network) if matches!(network.as_bytes(), b"testnet4") => {
+            include_bytes!("../../testnet4-headers.bin")
+        }
+        Some(network) if matches!(network.as_bytes(), b"signet") => {
+            include_bytes!("../../signet-headers.bin")
+        }
+        Some(network) if matches!(network.as_bytes(), b"regtest") => {
+            include_bytes!("../../regtest-headers.bin")
+        }
         None => include_bytes!("../../mainnet-headers.bin"),
         _ => panic!("Invalid network type"),
     }
@@ -40,8 +48,7 @@ fn main() {
     let output_file_path = &args[2];
     let batch_size: usize = args[3].parse().expect("Batch size should be a number");
 
-    let headers = include_bytes!(HEADERS_PATH);
-    let headers = headers
+    let headers = HEADERS
         .chunks(80)
         .map(|header| CircuitBlockHeader::try_from_slice(header).unwrap())
         .collect::<Vec<CircuitBlockHeader>>();

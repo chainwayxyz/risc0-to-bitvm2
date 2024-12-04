@@ -211,12 +211,12 @@ fn calculate_new_difficulty(
     } else if actual_timespan > EXPECTED_EPOCH_TIMESPAN * 4 {
         actual_timespan = EXPECTED_EPOCH_TIMESPAN * 4;
     }
-    
+
     let new_target_bytes = bits_to_target(current_target);
     let mut new_target = U256::from_be_bytes(new_target_bytes)
         .wrapping_mul(&U256::from(actual_timespan))
         .wrapping_div(&U256::from(EXPECTED_EPOCH_TIMESPAN));
-    
+
     if new_target > NETWORK_CONSTANTS.max_target {
         new_target = NETWORK_CONSTANTS.max_target;
     }
@@ -255,7 +255,7 @@ pub fn apply_blocks(chain_state: &mut ChainState, block_headers: Vec<CircuitBloc
 
     let mut current_work_add = calculate_work(&current_target_bytes);
     let mut total_work = U256::from_be_bytes(chain_state.total_work);
-    
+
     let mut last_block_time = if IS_TESTNET4 {
         if chain_state.block_height == u32::MAX {
             0
@@ -267,25 +267,26 @@ pub fn apply_blocks(chain_state: &mut ChainState, block_headers: Vec<CircuitBloc
     };
 
     for block_header in block_headers {
-        let (target_to_use, expected_bits, work_to_add) = if IS_TESTNET4 && block_header.time > last_block_time + 1200 {
-            let max_target_bytes = NETWORK_CONSTANTS.max_target.to_be_bytes();
-            (
-                max_target_bytes,
-                target_to_bits(&max_target_bytes),
-                calculate_work(&max_target_bytes),
-            )
-        } else {
-            (
-                current_target_bytes,
-                chain_state.current_target_bits,
-                current_work_add,
-            )
-        };
+        let (target_to_use, expected_bits, work_to_add) =
+            if IS_TESTNET4 && block_header.time > last_block_time + 1200 {
+                let max_target_bytes = NETWORK_CONSTANTS.max_target.to_be_bytes();
+                (
+                    max_target_bytes,
+                    target_to_bits(&max_target_bytes),
+                    calculate_work(&max_target_bytes),
+                )
+            } else {
+                (
+                    current_target_bytes,
+                    chain_state.current_target_bits,
+                    current_work_add,
+                )
+            };
 
         let new_block_hash = block_header.compute_block_hash();
 
         assert_eq!(block_header.prev_block_hash, chain_state.best_block_hash);
-        
+
         if IS_REGTEST {
             assert_eq!(block_header.bits, NETWORK_CONSTANTS.max_bits);
         } else {
@@ -308,7 +309,7 @@ pub fn apply_blocks(chain_state: &mut ChainState, block_headers: Vec<CircuitBloc
         }
 
         chain_state.prev_11_timestamps[chain_state.block_height as usize % 11] = block_header.time;
-        
+
         if IS_TESTNET4 {
             last_block_time = block_header.time;
         }
@@ -957,9 +958,7 @@ mod tests {
         // The validation is expected to panic
         check_hash_valid(
             &first_15_hashes[0],
-            &U256::from_be_hex(
-                "00000000FFFF0000000000000000000000000000000000000000000000000000",
-            )
+            &U256::from_be_hex("00000000FFFF0000000000000000000000000000000000000000000000000000")
                 .wrapping_div(&(U256::ONE << 157))
                 .to_be_bytes(),
         );
