@@ -12,10 +12,10 @@ BITCOIN_NETWORK=mainnet REPR_GUEST_BUILD=1 cargo build --release
 
 ## Proving Bitcoin Headers
 
-To prove Bitcoin headers, first download the Bitcoin headers:
+To prove Bitcoin headers, first download the Bitcoin headers and rename it to "mainnet-headers.bin":
 
 ```bash
-wget https://zerosync.org/chaindata/headers.bin
+wget https://zerosync.org/chaindata/headers.bin -O mainnet-headers.bin
 ```
 
 ### Usage
