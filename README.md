@@ -7,7 +7,7 @@
 To build Risc0 guests deterministically, run the following command:
 
 ```bash
-REPR_GUEST_BUILD=1 cargo build --release
+BITCOIN_NETWORK=mainnet REPR_GUEST_BUILD=1 cargo build --release
 ```
 
 ## Proving Bitcoin Headers

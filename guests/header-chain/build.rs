@@ -1,6 +1,6 @@
-use std::process::Command;
 use std::env;
 use std::path::PathBuf;
+use std::process::Command;
 
 fn main() {
     println!("cargo:rerun-if-changed=../../build.dockerfile");
@@ -16,11 +16,20 @@ fn main() {
 
         let output = Command::new("docker")
             .args([
-                "buildx", "build",
-                "--platform", "linux/amd64",
-                "-f", "build.dockerfile",
-                "--output", &format!("type=local,dest={}", output_dir.display()),
+                "buildx",
+                "build",
+                "--platform",
+                "linux/amd64",
+                "-f",
+                "build.dockerfile",
+                "--output",
+                &format!("type=local,dest={}", output_dir.display()),
                 ".", // Use current directory as context
+                "--build-arg",
+                &format!(
+                    "BITCOIN_NETWORK={}",
+                    std::env::var("BITCOIN_NETWORK").unwrap().as_str()
+                ),
             ])
             .current_dir(project_root) // Set working directory to project root
             .output()
