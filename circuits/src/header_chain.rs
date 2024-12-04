@@ -278,6 +278,7 @@ fn calculate_work(target: &[u8; 32]) -> U256 {
 /// Applies a list of block headers to the blockchain state.
 pub fn apply_blocks(chain_state: &mut ChainState, block_headers: Vec<CircuitBlockHeader>) {
     const NETWORK: NetworkConstants = NetworkConstants::from_network();
+    println!("BITCOIN_NETWORK: {:?}", option_env!("BITCOIN_NETWORK"));
     let is_regtest = matches!(option_env!("BITCOIN_NETWORK"), Some("regtest"));
     let is_testnet4 = matches!(option_env!("BITCOIN_NETWORK"), Some("testnet4"));
     

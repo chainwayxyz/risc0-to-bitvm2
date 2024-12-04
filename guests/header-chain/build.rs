@@ -1,40 +1,38 @@
-use std::collections::HashMap;
-use risc0_build::{DockerOptions, GuestOptions};
+use std::process::Command;
+use std::env;
+use std::path::PathBuf;
 
 fn main() {
-   println!("cargo:rerun-if-env-changed=REPR_GUEST_BUILD");
-   println!("cargo:rerun-if-env-changed=OUT_DIR");
+    println!("cargo:rerun-if-changed=../../build.dockerfile");
 
-   let mut options = HashMap::new();
+    if env::var("REPR_GUEST_BUILD").is_ok() {
+        // Get the absolute path to the project root
+        let current_dir = env::current_dir().expect("Failed to get current directory");
+        let project_root = current_dir.parent().unwrap().parent().unwrap();
+        let output_dir = project_root.join("target/riscv-guest/riscv32im-risc0-zkvm-elf/docker");
 
-   let bitcoin_network = std::env::var("BITCOIN_NETWORK")
-       .unwrap_or_else(|_| "mainnet".to_string());
-   
-//    println!("cargo:rustc-cfg=bitcoin_network=\"{}\"", bitcoin_network);
+        // Ensure the output directory exists
+        std::fs::create_dir_all(&output_dir).expect("Failed to create output directory");
 
-   let use_docker = if std::env::var("REPR_GUEST_BUILD").is_ok() {
-       let this_package_dir = std::env::var("CARGO_MANIFEST_DIR")
-           .expect("Failed to get CARGO_MANIFEST_DIR");
-       let root_dir = format!("{}/../../", this_package_dir);
-       
-       Some(DockerOptions {
-           root_dir: Some(root_dir.into()),
-       })
-   } else {
-       println!("cargo:warning=Guest code is not built in docker");
-       None
-   };
+        let output = Command::new("docker")
+            .args([
+                "buildx", "build",
+                "--platform", "linux/amd64",
+                "-f", "build.dockerfile",
+                "--output", &format!("type=local,dest={}", output_dir.display()),
+                ".", // Use current directory as context
+            ])
+            .current_dir(project_root) // Set working directory to project root
+            .output()
+            .expect("Failed to execute Docker command");
 
-//    println!("cargo:rustc-env=CARGO_FEATURE_{}", bitcoin_network.to_uppercase());
-   println!("cargo:rustc-cfg=feature=\"{}\"", bitcoin_network);
+        if !output.status.success() {
+            eprintln!("Docker build failed:");
+            eprintln!("stdout: {}", String::from_utf8_lossy(&output.stdout));
+            eprintln!("stderr: {}", String::from_utf8_lossy(&output.stderr));
+            panic!("Docker build failed");
+        }
+    }
 
-   options.insert(
-       "header-chain-guest",
-       GuestOptions {
-           use_docker,
-           ..Default::default()
-       },
-   );
-
-   risc0_build::embed_methods_with_options(options);
+    risc0_build::embed_methods();
 }
