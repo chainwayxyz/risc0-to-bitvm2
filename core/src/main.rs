@@ -7,15 +7,18 @@ use circuits::{
     risc0_zkvm::{default_prover, ExecutorEnv},
 };
 
-use header_chain_circuit::{HEADER_CHAIN_GUEST_ELF, HEADER_CHAIN_GUEST_ID};
 use risc0_circuit_recursion::control_id::BN254_IDENTITY_CONTROL_ID;
-use risc0_zkvm::sha::Digestible;
+use risc0_zkvm::{compute_image_id, sha::Digestible};
 use risc0_zkvm::{ProverOpts, Receipt, SuccinctReceiptVerifierParameters, SystemState};
 use sha2::Digest;
 use sha2::Sha256;
 use std::{env, fs};
 
 pub mod docker;
+
+const HEADER_CHAIN_GUEST_ELF: &[u8; 211744] = include_bytes!(
+    "../../target/riscv-guest/riscv32im-risc0-zkvm-elf/docker/header_chain_guest/header-chain-guest"
+);
 
 const HEADERS: &[u8] = {
     match option_env!("BITCOIN_NETWORK") {
@@ -52,6 +55,12 @@ fn main() {
         .chunks(80)
         .map(|header| CircuitBlockHeader::try_from_slice(header).unwrap())
         .collect::<Vec<CircuitBlockHeader>>();
+
+    let HEADER_CHAIN_GUEST_ID: [u32; 8] = compute_image_id(HEADER_CHAIN_GUEST_ELF)
+        .unwrap()
+        .as_words()
+        .try_into()
+        .unwrap();
 
     // Set the previous proof type based on input_proof argument
     let prev_receipt = if input_proof.to_lowercase() == "none" {
