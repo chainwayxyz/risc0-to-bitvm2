@@ -16,7 +16,7 @@ use std::{env, fs};
 
 pub mod docker;
 
-const HEADER_CHAIN_GUEST_ELF: &[u8; 211744] = include_bytes!(
+const HEADER_CHAIN_GUEST_ELF: &[u8] = include_bytes!(
     "../../target/riscv-guest/riscv32im-risc0-zkvm-elf/docker/header_chain_guest/header-chain-guest"
 );
 
