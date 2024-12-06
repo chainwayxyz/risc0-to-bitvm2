@@ -387,9 +387,31 @@ pub fn header_chain_circuit(guest: &impl ZkvmGuest) {
 }
 
 /// The method ID for the header chain circuit.
-const HEADER_CHAIN_GUEST_ID: [u32; 8] = [
-    314380159, 885575231, 2520661404, 2612034589, 815119798, 1189953802, 2907962186, 4273545664,
-];
+const HEADER_CHAIN_GUEST_ID: [u32; 8] = {
+    match option_env!("BITCOIN_NETWORK") {
+        Some(network) if matches!(network.as_bytes(), b"mainnet") => [
+            0xfc4e56b4, 0x8da35385, 0x3fc7341e, 0xbf6325b5, 0x9f4add64, 0x4fb09491, 0x4df0aa89,
+            0x79d46845,
+        ],
+        Some(network) if matches!(network.as_bytes(), b"testnet4") => [
+            0x131d0e2d, 0xd0857a49, 0xa80dcc5f, 0xa6db15e9, 0xff55d475, 0x15e726ae, 0x071cb901,
+            0xe637981e,
+        ],
+        Some(network) if matches!(network.as_bytes(), b"signet") => [
+            0xafe69385, 0x27df5c2a, 0xe111eabe, 0xbb2a2bad, 0x46bfcecd, 0xfd76fe1f, 0x34f47a4c,
+            0xcf4c539f,
+        ],
+        Some(network) if matches!(network.as_bytes(), b"regtest") => [
+            0xeef44c95, 0x10fd17dc, 0xdb04beba, 0x67eadcd7, 0x9bfc5e45, 0x522ed157, 0xd3a42c21,
+            0x625d53da,
+        ],
+        None => [
+            0xfc4e56b4, 0x8da35385, 0x3fc7341e, 0xbf6325b5, 0x9f4add64, 0x4fb09491, 0x4df0aa89,
+            0x79d46845,
+        ],
+        _ => panic!("Invalid network type"),
+    }
+};
 
 /// The final circuit that verifies the output of the header chain circuit.
 pub fn final_circuit(guest: &impl ZkvmGuest) {

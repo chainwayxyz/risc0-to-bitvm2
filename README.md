@@ -3,6 +3,7 @@
 **Warning: This software is experimental and should not be used in production.**
 
 ## Building Risc0 Guests
+First, install `Risc0` toolchain. You can refer to [here]().
 
 To build Risc0 guests deterministically, run the following command:
 
@@ -36,7 +37,7 @@ Example: To verify the previous proof and prove the next 90 Bitcoin headers, run
 
 ## Risc0 to Succinct Proofs
 
-BitVM requires a Groth16 proof with one public input. We have implemented the necessary functionalities to support this.
+BitVM requires a Groth16 proof (preferably with one public input). We have implemented the necessary functionalities to support this.
 
 ## Setup
 
@@ -44,19 +45,6 @@ First download the STARK Verify Circom circuit:
 
 ```
 git lfs pull
-```
-
-Then download Powers of Tau ceremony files:
-
-```
-wget -O ./groth16_proof/groth16/pot23.ptau https://storage.googleapis.com/zkevm/ptau/powersOfTau28_hez_final_23.ptau
-```
-
-To run the ceremony for `groth16` proof:
-```
-cd groth16_proof
-docker build -f docker/ceremony.Dockerfile . -t snark-ceremony
-docker run --rm -v $(pwd)/groth16:/ceremony/groth16_proof/groth16 snark-ceremony
 ```
 
 To build the prover:
