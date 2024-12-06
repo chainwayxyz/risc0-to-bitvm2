@@ -18,10 +18,18 @@ pub mod docker;
 
 const HEADER_CHAIN_GUEST_ELF: &[u8] = {
     match option_env!("BITCOIN_NETWORK") {
-        Some(network) if matches!(network.as_bytes(), b"mainnet") =>  include_bytes!("../../elfs/mainnet-header-chain-guest"),
-        Some(network) if matches!(network.as_bytes(), b"testnet4") => include_bytes!("../../elfs/testnet4-header-chain-guest"),
-        Some(network) if matches!(network.as_bytes(), b"signet") => include_bytes!("../../elfs/signet-header-chain-guest"),
-        Some(network) if matches!(network.as_bytes(), b"regtest") => include_bytes!("../../elfs/regtest-header-chain-guest"),
+        Some(network) if matches!(network.as_bytes(), b"mainnet") => {
+            include_bytes!("../../elfs/mainnet-header-chain-guest")
+        }
+        Some(network) if matches!(network.as_bytes(), b"testnet4") => {
+            include_bytes!("../../elfs/testnet4-header-chain-guest")
+        }
+        Some(network) if matches!(network.as_bytes(), b"signet") => {
+            include_bytes!("../../elfs/signet-header-chain-guest")
+        }
+        Some(network) if matches!(network.as_bytes(), b"regtest") => {
+            include_bytes!("../../elfs/regtest-header-chain-guest")
+        }
         None => include_bytes!("../../elfs/mainnet-header-chain-guest"),
         _ => panic!("Invalid path or ELF file"),
     }
