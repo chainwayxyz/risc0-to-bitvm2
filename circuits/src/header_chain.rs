@@ -390,24 +390,24 @@ pub fn header_chain_circuit(guest: &impl ZkvmGuest) {
 const HEADER_CHAIN_GUEST_ID: [u32; 8] = {
     match option_env!("BITCOIN_NETWORK") {
         Some(network) if matches!(network.as_bytes(), b"mainnet") => [
-            0xfc4e56b4, 0x8da35385, 0x3fc7341e, 0xbf6325b5, 0x9f4add64, 0x4fb09491, 0x4df0aa89,
-            0x79d46845,
+            0x659efd5d, 0x31764142, 0xf9cba57a, 0x73c70023, 0x82b1565b, 0xf0f68727, 0x9fb5dac7,
+            0x77696a06,
         ],
         Some(network) if matches!(network.as_bytes(), b"testnet4") => [
-            0x131d0e2d, 0xd0857a49, 0xa80dcc5f, 0xa6db15e9, 0xff55d475, 0x15e726ae, 0x071cb901,
-            0xe637981e,
+            0x45101b65, 0xffc0927d, 0x3b63ef24, 0xe9029898, 0x609fb84a, 0x7d17367f, 0xa42a2180,
+            0x90355298,
         ],
         Some(network) if matches!(network.as_bytes(), b"signet") => [
-            0xafe69385, 0x27df5c2a, 0xe111eabe, 0xbb2a2bad, 0x46bfcecd, 0xfd76fe1f, 0x34f47a4c,
-            0xcf4c539f,
+            0x0fc184e2, 0x903dd4e8, 0xdbbaa83f, 0x6948cda9, 0x17b3c0fc, 0xdb9381f0, 0x5d154868,
+            0x19c84e27,
         ],
         Some(network) if matches!(network.as_bytes(), b"regtest") => [
-            0xeef44c95, 0x10fd17dc, 0xdb04beba, 0x67eadcd7, 0x9bfc5e45, 0x522ed157, 0xd3a42c21,
-            0x625d53da,
+            0x1f66ab34, 0x5e9c2a8b, 0x50e39979, 0x0f99394b, 0x9eb62f2f, 0xbfc3b9a2, 0x84754e75,
+            0xe38104d7,
         ],
         None => [
-            0xfc4e56b4, 0x8da35385, 0x3fc7341e, 0xbf6325b5, 0x9f4add64, 0x4fb09491, 0x4df0aa89,
-            0x79d46845,
+            0x659efd5d, 0x31764142, 0xf9cba57a, 0x73c70023, 0x82b1565b, 0xf0f68727, 0x9fb5dac7,
+            0x77696a06,
         ],
         _ => panic!("Invalid network type"),
     }
