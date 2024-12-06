@@ -593,7 +593,6 @@ dependencies = [
  "borsh",
  "circuits",
  "crypto-bigint 0.5.2",
- "header-chain-circuit",
  "hex",
  "num-bigint 0.4.6",
  "num-traits",

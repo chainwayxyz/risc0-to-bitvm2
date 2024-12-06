@@ -6,6 +6,8 @@ use risc0_zkvm::guest::env::{self};
 pub mod header_chain;
 pub use risc0_zkvm;
 pub mod merkle_tree;
+pub mod mmr_guest;
+pub mod mmr_native;
 pub mod transaction;
 pub mod utils;
 

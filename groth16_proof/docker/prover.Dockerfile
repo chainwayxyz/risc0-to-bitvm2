@@ -64,14 +64,14 @@ RUN git submodule init && \
 FROM ubuntu:jammy-20231211.1@sha256:bbf3d1baa208b7649d1d0264ef7d522e1dc0deeeaaf6085bf8e4618867f03494 AS prover
 
 RUN apt update -qq && \
-  apt install -y libsodium23 nodejs npm && \
+  apt install -y libsodium23 nodejs npm wget && \
   npm install -g snarkjs@0.7.3
 
 COPY scripts/prover.sh /app/prover.sh
 COPY --from=builder /usr/local/sbin/rapidsnark /usr/local/sbin/rapidsnark
 COPY --from=builder /src/groth16_proof/circuits/verify_for_guest_cpp/verify_for_guest /app/verify_for_guest
 COPY --from=builder /src/groth16_proof/circuits/verify_for_guest_cpp/verify_for_guest.dat /app/verify_for_guest.dat
-COPY groth16/verify_for_guest_final.zkey /app/verify_for_guest_final.zkey
+RUN wget -O /app/verify_for_guest_final.zkey https://static.testnet.citrea.xyz/conf/verify_for_guest_final.zkey
 
 WORKDIR /app
 RUN chmod +x prover.sh

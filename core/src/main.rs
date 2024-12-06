@@ -1,20 +1,58 @@
 use borsh::BorshDeserialize;
 use circuits::{
     header_chain::{
-        BlockHeader, BlockHeaderCircuitOutput, HeaderChainCircuitInput, HeaderChainPrevProofType,
+        BlockHeaderCircuitOutput, CircuitBlockHeader, HeaderChainCircuitInput,
+        HeaderChainPrevProofType,
     },
     risc0_zkvm::{default_prover, ExecutorEnv},
 };
 
-use header_chain_circuit::{HEADER_CHAIN_GUEST_ELF, HEADER_CHAIN_GUEST_ID};
 use risc0_circuit_recursion::control_id::BN254_IDENTITY_CONTROL_ID;
-use risc0_zkvm::sha::Digestible;
+use risc0_zkvm::{compute_image_id, sha::Digestible};
 use risc0_zkvm::{ProverOpts, Receipt, SuccinctReceiptVerifierParameters, SystemState};
 use sha2::Digest;
 use sha2::Sha256;
 use std::{env, fs};
 
 pub mod docker;
+
+const HEADER_CHAIN_GUEST_ELF: &[u8] = {
+    match option_env!("BITCOIN_NETWORK") {
+        Some(network) if matches!(network.as_bytes(), b"mainnet") => {
+            include_bytes!("../../elfs/mainnet-header-chain-guest")
+        }
+        Some(network) if matches!(network.as_bytes(), b"testnet4") => {
+            include_bytes!("../../elfs/testnet4-header-chain-guest")
+        }
+        Some(network) if matches!(network.as_bytes(), b"signet") => {
+            include_bytes!("../../elfs/signet-header-chain-guest")
+        }
+        Some(network) if matches!(network.as_bytes(), b"regtest") => {
+            include_bytes!("../../elfs/regtest-header-chain-guest")
+        }
+        None => include_bytes!("../../elfs/mainnet-header-chain-guest"),
+        _ => panic!("Invalid path or ELF file"),
+    }
+};
+
+const HEADERS: &[u8] = {
+    match option_env!("BITCOIN_NETWORK") {
+        Some(network) if matches!(network.as_bytes(), b"mainnet") => {
+            include_bytes!("../../mainnet-headers.bin")
+        }
+        Some(network) if matches!(network.as_bytes(), b"testnet4") => {
+            include_bytes!("../../testnet4-headers.bin")
+        }
+        Some(network) if matches!(network.as_bytes(), b"signet") => {
+            include_bytes!("../../signet-headers.bin")
+        }
+        Some(network) if matches!(network.as_bytes(), b"regtest") => {
+            include_bytes!("../../regtest-headers.bin")
+        }
+        None => include_bytes!("../../mainnet-headers.bin"),
+        _ => panic!("Invalid network type"),
+    }
+};
 
 fn main() {
     // Parse command-line arguments
@@ -28,12 +66,16 @@ fn main() {
     let output_file_path = &args[2];
     let batch_size: usize = args[3].parse().expect("Batch size should be a number");
 
-    // Download the headers.bin file from https://zerosync.org/chaindata/headers.bin
-    let headers = include_bytes!("../../headers.bin");
-    let headers = headers
+    let headers = HEADERS
         .chunks(80)
-        .map(|header| BlockHeader::try_from_slice(header).unwrap())
-        .collect::<Vec<BlockHeader>>();
+        .map(|header| CircuitBlockHeader::try_from_slice(header).unwrap())
+        .collect::<Vec<CircuitBlockHeader>>();
+
+    let HEADER_CHAIN_GUEST_ID: [u32; 8] = compute_image_id(HEADER_CHAIN_GUEST_ELF)
+        .unwrap()
+        .as_words()
+        .try_into()
+        .unwrap();
 
     // Set the previous proof type based on input_proof argument
     let prev_receipt = if input_proof.to_lowercase() == "none" {
