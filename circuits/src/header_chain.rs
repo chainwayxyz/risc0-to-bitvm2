@@ -354,6 +354,8 @@ pub struct HeaderChainCircuitInput {
 
 /// The main entry point of the header chain circuit.
 pub fn header_chain_circuit(guest: &impl ZkvmGuest) {
+    let start = risc0_zkvm::guest::env::cycle_count();
+
     let input: HeaderChainCircuitInput = guest.read_from_host();
     // println!("Detected network: {:?}", NETWORK_TYPE);
     // println!("NETWORK_CONSTANTS: {:?}", NETWORK_CONSTANTS);
@@ -380,6 +382,8 @@ pub fn header_chain_circuit(guest: &impl ZkvmGuest) {
         method_id: input.method_id,
         chain_state,
     });
+    let end = risc0_zkvm::guest::env::cycle_count();
+    println!("Header chain circuit took {:?} cycles", end - start);
 }
 
 /// The method ID for the header chain circuit.

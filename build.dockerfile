@@ -1,4 +1,4 @@
-FROM --platform=linux/amd64 risczero/risc0-guest-builder:r0.1.81.0 AS build
+FROM risczero/risc0-guest-builder:r0.1.81.0 AS build
 
 WORKDIR /src
 
@@ -23,4 +23,5 @@ RUN echo "Building for network: ${BITCOIN_NETWORK}" && \
     cargo +risc0 build --release --target riscv32im-risc0-zkvm-elf --manifest-path ${CARGO_MANIFEST_PATH}
 
 FROM scratch AS export
-COPY --from=build /src/guests/header-chain/guest/target/riscv32im-risc0-zkvm-elf/release /header_chain_guest
+COPY --from=build /src/guests/header-chain/guest/target/riscv32im-risc0-zkvm-elf/release target/riscv-guest/riscv32im-risc0-zkvm-elf/docker/header_chain_guest
+COPY --from=build /src/guests/header-chain/guest/target/riscv32im-risc0-zkvm-elf/release/header-chain-guest elfs/header-chain-guest

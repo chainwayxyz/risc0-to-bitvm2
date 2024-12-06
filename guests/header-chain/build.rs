@@ -23,7 +23,7 @@ fn main() {
                 "-f",
                 "build.dockerfile",
                 "--output",
-                &format!("type=local,dest={}", output_dir.display()),
+                &format!("type=local,dest=."),
                 ".", // Use current directory as context
                 "--build-arg",
                 &format!(
