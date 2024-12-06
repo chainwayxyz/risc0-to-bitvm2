@@ -12,7 +12,7 @@ mod tests {
     #[test]
     fn test_header_chain_circuit() {
         // Download the headers.bin file from https://zerosync.org/chaindata/headers.bin
-        let headers = include_bytes!("../../headers.bin");
+        let headers = include_bytes!("../../mainnet-headers.bin");
         let headers = headers
             .chunks(80)
             .map(|header| CircuitBlockHeader::try_from_slice(header).unwrap())
