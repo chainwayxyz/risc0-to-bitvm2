@@ -23,5 +23,6 @@ RUN echo "Building for network: ${BITCOIN_NETWORK}" && \
     cargo +risc0 build --release --target riscv32im-risc0-zkvm-elf --manifest-path ${CARGO_MANIFEST_PATH}
 
 FROM scratch AS export
+ARG BITCOIN_NETWORK
 COPY --from=build /src/guests/header-chain/guest/target/riscv32im-risc0-zkvm-elf/release target/riscv-guest/riscv32im-risc0-zkvm-elf/docker/header_chain_guest
-COPY --from=build /src/guests/header-chain/guest/target/riscv32im-risc0-zkvm-elf/release/header-chain-guest elfs/header-chain-guest
+COPY --from=build /src/guests/header-chain/guest/target/riscv32im-risc0-zkvm-elf/release/header-chain-guest elfs/${BITCOIN_NETWORK}-header-chain-guest
