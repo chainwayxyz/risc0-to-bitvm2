@@ -13,9 +13,9 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use crate::utils::calculate_double_sha256;
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
-pub struct BridgeTransaction(pub Transaction);
+pub struct CircuitTransaction(pub Transaction);
 
-impl BridgeTransaction {
+impl CircuitTransaction {
     pub fn from(transaction: Transaction) -> Self {
         Self(transaction)
     }
@@ -48,7 +48,7 @@ impl BridgeTransaction {
     }
 }
 
-impl BorshSerialize for BridgeTransaction {
+impl BorshSerialize for CircuitTransaction {
     #[inline]
     fn serialize<W: borsh::io::Write>(&self, writer: &mut W) -> borsh::io::Result<()> {
         BorshSerialize::serialize(&self.0.version.0, writer)?;
@@ -65,7 +65,7 @@ impl BorshSerialize for BridgeTransaction {
     }
 }
 
-impl BorshDeserialize for BridgeTransaction {
+impl BorshDeserialize for CircuitTransaction {
     #[inline]
     fn deserialize_reader<R: borsh::io::Read>(reader: &mut R) -> borsh::io::Result<Self> {
         let version = Version(i32::deserialize_reader(reader)?);
@@ -130,26 +130,26 @@ fn deserialize_txout<R: borsh::io::Read>(reader: &mut R) -> borsh::io::Result<Tx
     })
 }
 
-impl Deref for BridgeTransaction {
+impl Deref for CircuitTransaction {
     type Target = Transaction;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl DerefMut for BridgeTransaction {
+impl DerefMut for CircuitTransaction {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
 }
 
-impl From<Transaction> for BridgeTransaction {
+impl From<Transaction> for CircuitTransaction {
     fn from(tx: Transaction) -> Self {
         Self(tx)
     }
 }
 
-impl Into<Transaction> for BridgeTransaction {
+impl Into<Transaction> for CircuitTransaction {
     fn into(self) -> Transaction {
         self.0
     }
@@ -161,7 +161,7 @@ mod tests {
 
     #[test]
     fn test_txid_legacy() {
-        let tx = BridgeTransaction(bitcoin::consensus::deserialize(&hex::decode("0100000001c997a5e56e104102fa209c6a852dd90660a20b2d9c352423edce25857fcd3704000000004847304402204e45e16932b8af514961a1d3a1a25fdf3f4f7732e9d624c6c61548ab5fb8cd410220181522ec8eca07de4860a4acdd12909d831cc56cbbac4622082221a8768d1d0901ffffffff0200ca9a3b00000000434104ae1a62fe09c5f51b13905f07f06b99a2f7159b2225f374cd378d71302fa28414e7aab37397f554a7df5f142c21c1b7303b8a0626f1baded5c72a704f7e6cd84cac00286bee0000000043410411db93e1dcdb8a016b49840f8c53bc1eb68a382e97b1482ecad7b148a6909a5cb2e0eaddfb84ccf9744464f82e160bfa9b8b64f9d4c03f999b8643f656b412a3ac00000000").unwrap()).unwrap());
+        let tx = CircuitTransaction(bitcoin::consensus::deserialize(&hex::decode("0100000001c997a5e56e104102fa209c6a852dd90660a20b2d9c352423edce25857fcd3704000000004847304402204e45e16932b8af514961a1d3a1a25fdf3f4f7732e9d624c6c61548ab5fb8cd410220181522ec8eca07de4860a4acdd12909d831cc56cbbac4622082221a8768d1d0901ffffffff0200ca9a3b00000000434104ae1a62fe09c5f51b13905f07f06b99a2f7159b2225f374cd378d71302fa28414e7aab37397f554a7df5f142c21c1b7303b8a0626f1baded5c72a704f7e6cd84cac00286bee0000000043410411db93e1dcdb8a016b49840f8c53bc1eb68a382e97b1482ecad7b148a6909a5cb2e0eaddfb84ccf9744464f82e160bfa9b8b64f9d4c03f999b8643f656b412a3ac00000000").unwrap()).unwrap());
         let mut txid = tx.txid();
         txid.reverse();
         assert_eq!(
@@ -172,7 +172,7 @@ mod tests {
 
     #[test]
     fn test_txid_segwit() {
-        let tx = BridgeTransaction(bitcoin::consensus::deserialize(&hex::decode("0100000000010142ec43062180882d239799f134f7d8e9d104f37d87643e35fda84c47e4fc67a00000000000ffffffff026734000000000000225120e86c9c8c6777f28af40ef0c4cbd8308d27b60c7adf4f668d2433113616ddaa33cf660000000000001976a9149893ea81967d770f07f9bf0f659e3bce155be99a88ac01418a3d2a2182154dfd083cf48bfcd9f7dfb9d09eb46515e0043cdf39b688e9e711a2ce47f0f535191368be52fd706d77eb82eacd293a6a881491cdadf99b1df4400100000000").unwrap()).unwrap());
+        let tx = CircuitTransaction(bitcoin::consensus::deserialize(&hex::decode("0100000000010142ec43062180882d239799f134f7d8e9d104f37d87643e35fda84c47e4fc67a00000000000ffffffff026734000000000000225120e86c9c8c6777f28af40ef0c4cbd8308d27b60c7adf4f668d2433113616ddaa33cf660000000000001976a9149893ea81967d770f07f9bf0f659e3bce155be99a88ac01418a3d2a2182154dfd083cf48bfcd9f7dfb9d09eb46515e0043cdf39b688e9e711a2ce47f0f535191368be52fd706d77eb82eacd293a6a881491cdadf99b1df4400100000000").unwrap()).unwrap());
         let mut txid = tx.txid();
         txid.reverse();
         assert_eq!(
@@ -190,10 +190,10 @@ mod tests {
             output: vec![],
         };
 
-        let bridge_tx = BridgeTransaction::from(original_tx.clone());
+        let bridge_tx = CircuitTransaction::from(original_tx.clone());
         assert_eq!(bridge_tx.inner(), &original_tx);
 
-        let bridge_tx2: BridgeTransaction = original_tx.clone().into();
+        let bridge_tx2: CircuitTransaction = original_tx.clone().into();
         assert_eq!(bridge_tx2.inner(), &original_tx);
         assert_eq!(bridge_tx.txid(), bridge_tx2.txid());
         assert_eq!(bridge_tx.txid(), bridge_tx2.txid());
@@ -201,7 +201,7 @@ mod tests {
 
     #[test]
     fn test_into_transaction() {
-        let bridge_tx = BridgeTransaction(Transaction {
+        let bridge_tx = CircuitTransaction(Transaction {
             version: Version(1),
             lock_time: LockTime::from_consensus(0),
             input: vec![],
@@ -221,13 +221,13 @@ mod tests {
             input: vec![],
             output: vec![],
         };
-        let bridge_tx = BridgeTransaction(original_tx);
+        let bridge_tx = CircuitTransaction(original_tx);
 
         // Serialize
         let serialized = borsh::to_vec(&bridge_tx).unwrap();
 
         // Deserialize
-        let deserialized: BridgeTransaction = borsh::from_slice(&serialized).unwrap();
+        let deserialized: CircuitTransaction = borsh::from_slice(&serialized).unwrap();
 
         assert_eq!(bridge_tx, deserialized);
         assert_eq!(bridge_tx.txid(), deserialized.txid());
@@ -235,7 +235,7 @@ mod tests {
 
     #[test]
     fn test_deref_traits() {
-        let mut bridge_tx = BridgeTransaction(Transaction {
+        let mut bridge_tx = CircuitTransaction(Transaction {
             version: Version(1),
             lock_time: LockTime::from_consensus(0),
             input: vec![],
@@ -271,7 +271,7 @@ mod tests {
             }],
         };
 
-        let bridge_tx = BridgeTransaction(tx.clone());
+        let bridge_tx = CircuitTransaction(tx.clone());
 
         assert_eq!(bridge_tx.version, tx.version);
         assert_eq!(bridge_tx.lock_time, tx.lock_time);

@@ -414,6 +414,7 @@ const HEADER_CHAIN_GUEST_ID: [u32; 8] = {
 };
 
 /// The final circuit that verifies the output of the header chain circuit.
+/// TODO: Give SPVs for transaction verification. Hash txid, last_blockhash
 pub fn final_circuit(guest: &impl ZkvmGuest) {
     let header_chain_circuit_output = guest.read_from_host::<BlockHeaderCircuitOutput>();
 

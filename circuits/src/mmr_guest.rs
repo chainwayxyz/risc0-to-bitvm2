@@ -1,14 +1,14 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 use serde::{Deserialize, Serialize};
 
-use crate::utils::{calculate_sha256, hash_pair};
+use crate::{mmr_native::MMRInclusionProof, utils::hash_pair};
 
 /// Represents the MMR for inside zkVM (guest)
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug, BorshDeserialize, BorshSerialize)]
 
 pub struct MMRGuest {
-    subroots: Vec<[u8; 32]>,
-    size: u32,
+    pub subroots: Vec<[u8; 32]>,
+    pub size: u32,
 }
 
 impl MMRGuest {
@@ -47,36 +47,37 @@ impl MMRGuest {
         (tree_idx, xor_leading_digit, internal_idx)
     }
 
-    pub fn get_root(&self) -> [u8; 32] {
-        let mut preimage: Vec<u8> = vec![];
-        for i in 0..self.subroots.len() {
-            preimage.extend_from_slice(&self.subroots[i]);
-        }
-        calculate_sha256(&preimage)
-    }
+    // pub fn get_root(&self) -> [u8; 32] {
+    //     let mut preimage: Vec<u8> = vec![];
+    //     for i in 0..self.subroots.len() {
+    //         preimage.extend_from_slice(&self.subroots[i]);
+    //     }
+    //     calculate_sha256(&preimage)
+    // }
 
     /// Verifies an inclusion proof against the current MMR root
-    pub fn verify_proof(&self, leaf: [u8; 32], proof: &Vec<[u8; 32]>, index: u32) -> bool {
-        let (subroot_idx, subtree_size, internal_idx) = self.get_helpers_from_index(index);
+    pub fn verify_proof(&self, leaf: [u8; 32], mmr_proof: &MMRInclusionProof) -> bool {
+        // let (subroot_idx, subtree_size, internal_idx) = self.get_helpers_from_index(index);
         let mut current_hash = leaf;
-        for i in 0..subtree_size {
-            let sibling = proof[i];
-            if internal_idx & (1 << i) == 0 {
-                current_hash = hash_pair(current_hash, sibling);
+        for (i, elem) in self.subroots.iter().enumerate() {
+            let sibling = elem;
+            if mmr_proof.subroot_idx & (1 << i) == 0 {
+                current_hash = hash_pair(current_hash, *sibling);
             } else {
-                current_hash = hash_pair(sibling, current_hash);
+                current_hash = hash_pair(*sibling, current_hash);
             }
         }
 
-        let mut preimage: Vec<u8> = vec![];
-        for i in 0..subroot_idx {
-            preimage.extend_from_slice(&self.subroots[i]);
-        }
-        preimage.extend_from_slice(&current_hash);
-        for i in subroot_idx + 1..self.subroots.len() {
-            preimage.extend_from_slice(&self.subroots[i]);
-        }
-        let calculated_root = calculate_sha256(&preimage);
-        calculated_root == self.get_root()
+        self.subroots[mmr_proof.subroot_idx] == current_hash
+        // let mut preimage: Vec<u8> = vec![];
+        // for i in 0..subroot_idx {
+        //     preimage.extend_from_slice(&self.subroots[i]);
+        // }
+        // preimage.extend_from_slice(&current_hash);
+        // for i in subroot_idx + 1..self.subroots.len() {
+        //     preimage.extend_from_slice(&self.subroots[i]);
+        // }
+        // let calculated_root = calculate_sha256(&preimage);
+        // calculated_root == self.get_root()
     }
 }
