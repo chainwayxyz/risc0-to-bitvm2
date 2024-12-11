@@ -4,7 +4,7 @@
 /// This module contains the implementation of the header chain circuit, which is basically
 /// the Bitcoin header chain verification logic.
 /// WARNING: This implementation is not a word-to-word translation of the Bitcoin Core source code.
-use crate::{mmr_guest::MMRGuest, ZkvmGuest};
+use crate::{mmr_guest::MMRGuest, spv::SPV, ZkvmGuest};
 use bitcoin::{
     block::{Header, Version},
     hashes::Hash,
@@ -336,6 +336,13 @@ pub struct BlockHeaderCircuitOutput {
     pub chain_state: ChainState,
 }
 
+#[derive(Eq, PartialEq, Clone, Debug, BorshDeserialize, BorshSerialize)]
+
+pub struct FinalCircuitInput {
+    pub block_header_circuit_output: BlockHeaderCircuitOutput,
+    pub spv: SPV,
+}
+
 /// The input proof of the header chain circuit.
 /// The proof can be either None (implying the beginning) or a Succinct Risc0 proof..
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug, BorshDeserialize, BorshSerialize)]
@@ -390,8 +397,8 @@ pub fn header_chain_circuit(guest: &impl ZkvmGuest) {
 const HEADER_CHAIN_GUEST_ID: [u32; 8] = {
     match option_env!("BITCOIN_NETWORK") {
         Some(network) if matches!(network.as_bytes(), b"mainnet") => [
-            0x659efd5d, 0x31764142, 0xf9cba57a, 0x73c70023, 0x82b1565b, 0xf0f68727, 0x9fb5dac7,
-            0x77696a06,
+            3330163524, 477820661, 2949211016, 433273894, 3983415490, 2248672590, 3939263220,
+            1105412608,
         ],
         Some(network) if matches!(network.as_bytes(), b"testnet4") => [
             0x45101b65, 0xffc0927d, 0x3b63ef24, 0xe9029898, 0x609fb84a, 0x7d17367f, 0xa42a2180,
@@ -406,24 +413,34 @@ const HEADER_CHAIN_GUEST_ID: [u32; 8] = {
             0xe38104d7,
         ],
         None => [
-            0x659efd5d, 0x31764142, 0xf9cba57a, 0x73c70023, 0x82b1565b, 0xf0f68727, 0x9fb5dac7,
-            0x77696a06,
+            3330163524, 477820661, 2949211016, 433273894, 3983415490, 2248672590, 3939263220,
+            1105412608,
         ],
         _ => panic!("Invalid network type"),
     }
 };
 
 /// The final circuit that verifies the output of the header chain circuit.
-/// TODO: Give SPVs for transaction verification. Hash txid, last_blockhash
 pub fn final_circuit(guest: &impl ZkvmGuest) {
-    let header_chain_circuit_output = guest.read_from_host::<BlockHeaderCircuitOutput>();
+    let input: FinalCircuitInput = guest.read_from_host::<FinalCircuitInput>();
 
-    guest.verify(HEADER_CHAIN_GUEST_ID, &header_chain_circuit_output);
-
+    guest.verify(HEADER_CHAIN_GUEST_ID, &input.block_header_circuit_output);
+    input.spv.verify(
+        input
+            .block_header_circuit_output
+            .chain_state
+            .block_hashes_mmr,
+    );
     let mut hasher = blake3::Hasher::new();
 
-    hasher.update(&header_chain_circuit_output.chain_state.best_block_hash);
-    hasher.update(&header_chain_circuit_output.chain_state.total_work);
+    hasher.update(&input.spv.transaction.txid());
+    hasher.update(
+        &input
+            .block_header_circuit_output
+            .chain_state
+            .best_block_hash,
+    );
+    hasher.update(&input.block_header_circuit_output.chain_state.total_work);
     let final_output = hasher.finalize();
 
     guest.commit(final_output.as_bytes());

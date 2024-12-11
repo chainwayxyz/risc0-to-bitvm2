@@ -78,7 +78,7 @@ impl MMRNative {
     //     subroots
     // }
 
-    /// Generates a proof for a given index. Returns the leaf as well. TODO: Maybe don't return the leaf?
+    /// Generates a proof for a given index. Returns the leaf as well.
     pub fn generate_proof(&self, index: u32) -> ([u8; 32], MMRInclusionProof) {
         if self.nodes[0].len() == 0 {
             panic!("MMR is empty");
