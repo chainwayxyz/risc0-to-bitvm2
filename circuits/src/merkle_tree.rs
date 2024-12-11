@@ -1,4 +1,3 @@
-use bitcoin::Block;
 use borsh::{BorshDeserialize, BorshSerialize};
 use serde::{Deserialize, Serialize};
 
@@ -67,7 +66,7 @@ impl BitcoinMerkleTree {
         self.nodes[self.nodes.len() - 1][0]
     }
 
-    pub fn get_idx_path(&self, index: u32) -> Vec<[u8; 32]> {
+    fn get_idx_path(&self, index: u32) -> Vec<[u8; 32]> {
         assert!(index < self.nodes[0].len() as u32, "Index out of bounds");
         let mut path = vec![];
         let mut level = 0;
@@ -84,6 +83,11 @@ impl BitcoinMerkleTree {
             i /= 2;
         }
         path
+    }
+
+    pub fn generate_proof(&self, idx: u32) -> BlockInclusionProof {
+        let path = self.get_idx_path(idx);
+        BlockInclusionProof::new(idx, path)
     }
 
     pub fn calculate_root_with_merkle_proof(
@@ -129,7 +133,7 @@ impl BlockInclusionProof {
 
 pub fn verify_merkle_proof(
     txid: [u8; 32],
-    inclusion_proof: BlockInclusionProof,
+    inclusion_proof: &BlockInclusionProof,
     root: [u8; 32],
 ) -> bool {
     let calculated_root = inclusion_proof.get_root(txid);
@@ -161,9 +165,8 @@ mod tests {
             merkle_root,
             block.header.merkle_root.as_raw_hash().to_byte_array()
         );
-        let merkle_proof_0 = merkle_tree.get_idx_path(0);
-        let inclusion_proof = BlockInclusionProof::new(0, merkle_proof_0.clone());
-        assert!(verify_merkle_proof(txid_0, inclusion_proof, merkle_root));
+        let merkle_proof_0 = merkle_tree.generate_proof(0);
+        assert!(verify_merkle_proof(txid_0, &merkle_proof_0, merkle_root));
     }
 
     #[test]
@@ -183,9 +186,8 @@ mod tests {
             block.header.merkle_root.as_raw_hash().to_byte_array()
         );
         for (i, txid) in txid_vec_clone.into_iter().enumerate() {
-            let merkle_proof_i = merkle_tree.get_idx_path(i as u32);
-            let inclusion_proof_i = BlockInclusionProof::new(i as u32, merkle_proof_i);
-            assert!(verify_merkle_proof(txid, inclusion_proof_i, merkle_root));
+            let merkle_proof_i = merkle_tree.generate_proof(i as u32);
+            assert!(verify_merkle_proof(txid, &merkle_proof_i, merkle_root));
         }
     }
 }

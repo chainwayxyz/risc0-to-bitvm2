@@ -1,10 +1,7 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    mmr_guest::MMRGuest,
-    utils::{calculate_sha256, hash_pair},
-};
+use crate::utils::hash_pair;
 
 /// Represents the MMR for outside zkVM (native).
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug, BorshDeserialize, BorshSerialize)]
@@ -69,19 +66,19 @@ impl MMRNative {
     // }
 
     /// Returns the subroot helpers for a given subroot. These are the subroots that are not the provided subroot.
-    fn get_subroot_helpers(&self, subroot: [u8; 32]) -> Vec<[u8; 32]> {
-        let mut subroots: Vec<[u8; 32]> = vec![];
-        for level in &self.nodes {
-            if level.len() % 2 == 1 {
-                if level[level.len() - 1] != subroot {
-                    subroots.push(level[level.len() - 1]);
-                }
-            }
-        }
-        subroots
-    }
+    // fn get_subroot_helpers(&self, subroot: [u8; 32]) -> Vec<[u8; 32]> {
+    //     let mut subroots: Vec<[u8; 32]> = vec![];
+    //     for level in &self.nodes {
+    //         if level.len() % 2 == 1 {
+    //             if level[level.len() - 1] != subroot {
+    //                 subroots.push(level[level.len() - 1]);
+    //             }
+    //         }
+    //     }
+    //     subroots
+    // }
 
-    /// Generates a proof for a given index.
+    /// Generates a proof for a given index. Returns the leaf as well. TODO: Maybe don't return the leaf?
     pub fn generate_proof(&self, index: u32) -> ([u8; 32], MMRInclusionProof) {
         if self.nodes[0].len() == 0 {
             panic!("MMR is empty");
@@ -118,22 +115,26 @@ impl MMRNative {
         let xor_leading_digit = 31 - xor.leading_zeros() as usize;
         let internal_idx = index & ((1 << xor_leading_digit) - 1);
         let leading_zeros_size = 31 - (self.nodes[0].len() as u32).leading_zeros() as usize;
-        let mut tree_idx = 0;
+        let mut subtree_idx = 0;
         for i in xor_leading_digit + 1..=leading_zeros_size {
             if self.nodes[0].len() & (1 << i) != 0 {
-                tree_idx += 1;
+                subtree_idx += 1;
             }
         }
         // (tree_idx, xor_leading_digit, internal_idx)
-        (tree_idx, internal_idx)
+        (subtree_idx, internal_idx)
     }
 
     /// Verifies an inclusion proof against the current MMR root.
-    pub fn verify_proof(&self, leaf: [u8; 32], inclusion_proof: &MMRInclusionProof) -> bool {
+    pub fn verify_proof(&self, leaf: [u8; 32], mmr_proof: &MMRInclusionProof) -> bool {
+        println!("NATIVE: inclusion_proof: {:?}", mmr_proof);
+        println!("NATIVE: leaf: {:?}", leaf);
         // let (subroot_idx, subtree_size, internal_idx) = self.get_helpers_from_index(index);
-        let subroot = inclusion_proof.get_subroot(leaf);
+        let subroot = mmr_proof.get_subroot(leaf);
+        println!("NATIVE: calculated_subroot: {:?}", subroot);
         let subroots = self.get_subroots();
-        subroots[inclusion_proof.subroot_idx] == subroot
+        println!("NATIVE: subroots: {:?}", subroots);
+        subroots[mmr_proof.subroot_idx] == subroot
         // let mut preimage: Vec<u8> = vec![];
         // for i in 0..subroot_idx {
         //     preimage.extend_from_slice(&subroots[i]);
