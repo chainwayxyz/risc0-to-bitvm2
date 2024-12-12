@@ -173,8 +173,27 @@ fn reverse_bits_and_copy(input: &[u8], output: &mut [u8]) {
 
 #[cfg(test)]
 mod tests {
+    use circuits::{
+        header_chain::FinalCircuitInput, merkle_tree::BitcoinMerkleTree, mmr_native::MMRNative,
+        spv::SPV, transaction::CircuitTransaction,
+    };
     use docker::stark_to_succinct;
+    use hex_literal::hex;
     use risc0_zkvm::compute_image_id;
+
+    const MAINNET_BLOCK_HASHES: [[u8; 32]; 11] = [
+        hex!("6fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d6190000000000"),
+        hex!("4860eb18bf1b1620e37e9490fc8a427514416fd75159ab86688e9a8300000000"),
+        hex!("bddd99ccfda39da1b108ce1a5d70038d0a967bacb68b6b63065f626a00000000"),
+        hex!("4944469562ae1c2c74d9a535e00b6f3e40ffbad4f2fda3895501b58200000000"),
+        hex!("85144a84488ea88d221c8bd6c059da090e88f8a2c99690ee55dbba4e00000000"),
+        hex!("fc33f596f822a0a1951ffdbf2a897b095636ad871707bf5d3162729b00000000"),
+        hex!("8d778fdc15a2d3fb76b7122a3b5582bea4f21f5a0c693537e7a0313000000000"),
+        hex!("4494c8cf4154bdcc0720cd4a59d9c9b285e4b146d45f061d2b6c967100000000"),
+        hex!("c60ddef1b7618ca2348a46e868afc26e3efc68226c78aa47f8488c4000000000"),
+        hex!("0508085c47cc849eb80ea905cc7800a3be674ffc57263cf210c59d8d00000000"),
+        hex!("e915d9a478e3adf3186c07c61a22228b10fd87df343c92782ecc052c00000000"),
+    ];
 
     use super::*;
     // #[ignore = "This is to only test final proof generation"]
@@ -197,10 +216,29 @@ mod tests {
 
         let receipt: Receipt = Receipt::try_from_slice(final_proof).unwrap();
 
-        let output = BlockHeaderCircuitOutput::try_from_slice(&receipt.journal.bytes).unwrap();
+        let mut mmr_native = MMRNative::new();
+        for block_hash in MAINNET_BLOCK_HASHES.iter() {
+            mmr_native.append(*block_hash);
+        }
 
+        let output = BlockHeaderCircuitOutput::try_from_slice(&receipt.journal.bytes).unwrap();
+        let tx: CircuitTransaction = CircuitTransaction(bitcoin::consensus::deserialize(&hex::decode("01000000010000000000000000000000000000000000000000000000000000000000000000ffffffff4d04ffff001d0104455468652054696d65732030332f4a616e2f32303039204368616e63656c6c6f72206f6e206272696e6b206f66207365636f6e64206261696c6f757420666f722062616e6b73ffffffff0100f2052a01000000434104678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38c4f35504e51ec112de5c384df7ba0b8d578a4c702b6bf11d5fac00000000").unwrap()).unwrap());
+        let block_header: CircuitBlockHeader = CircuitBlockHeader::try_from_slice(hex::decode("0100000000000000000000000000000000000000000000000000000000000000000000003ba3edfd7a7b12b27ac72c3e67768f617fc81bc3888a51323a9fb8aa4b1e5e4a29ab5f49ffff001d1dac2b7c").unwrap().as_slice()).unwrap();
+        let bitcoin_merkle_tree: BitcoinMerkleTree = BitcoinMerkleTree::new(vec![tx.txid()]);
+        let bitcoin_inclusion_proof = bitcoin_merkle_tree.generate_proof(0);
+        let (_, mmr_inclusion_proof) = mmr_native.generate_proof(0);
+        let spv: SPV = SPV::new(
+            tx,
+            bitcoin_inclusion_proof,
+            block_header,
+            mmr_inclusion_proof,
+        );
+        let final_circuit_input: FinalCircuitInput = FinalCircuitInput {
+            block_header_circuit_output: output,
+            spv: spv,
+        };
         let env = ExecutorEnv::builder()
-            .write_slice(&borsh::to_vec(&output).unwrap())
+            .write_slice(&borsh::to_vec(&final_circuit_input).unwrap())
             .add_assumption(receipt)
             .build()
             .unwrap();

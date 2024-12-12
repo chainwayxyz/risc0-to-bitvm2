@@ -4,7 +4,7 @@
 /// This module contains the implementation of the header chain circuit, which is basically
 /// the Bitcoin header chain verification logic.
 /// WARNING: This implementation is not a word-to-word translation of the Bitcoin Core source code.
-use crate::{mmr_guest::MMRGuest, ZkvmGuest};
+use crate::{mmr_guest::MMRGuest, spv::SPV, ZkvmGuest};
 use bitcoin::{
     block::{Header, Version},
     hashes::Hash,
@@ -12,6 +12,7 @@ use bitcoin::{
 };
 use borsh::{BorshDeserialize, BorshSerialize};
 use crypto_bigint::{Encoding, U256};
+use risc0_zkvm::guest::env;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
@@ -336,6 +337,13 @@ pub struct BlockHeaderCircuitOutput {
     pub chain_state: ChainState,
 }
 
+#[derive(Eq, PartialEq, Clone, Debug, BorshDeserialize, BorshSerialize)]
+
+pub struct FinalCircuitInput {
+    pub block_header_circuit_output: BlockHeaderCircuitOutput,
+    pub spv: SPV,
+}
+
 /// The input proof of the header chain circuit.
 /// The proof can be either None (implying the beginning) or a Succinct Risc0 proof..
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug, BorshDeserialize, BorshSerialize)]
@@ -390,24 +398,24 @@ pub fn header_chain_circuit(guest: &impl ZkvmGuest) {
 const HEADER_CHAIN_GUEST_ID: [u32; 8] = {
     match option_env!("BITCOIN_NETWORK") {
         Some(network) if matches!(network.as_bytes(), b"mainnet") => [
-            0x659efd5d, 0x31764142, 0xf9cba57a, 0x73c70023, 0x82b1565b, 0xf0f68727, 0x9fb5dac7,
-            0x77696a06,
+            3576661687, 3357259259, 2972154395, 4001004408, 3012737141, 2993326997, 715602082,
+            641613140,
         ],
         Some(network) if matches!(network.as_bytes(), b"testnet4") => [
-            0x45101b65, 0xffc0927d, 0x3b63ef24, 0xe9029898, 0x609fb84a, 0x7d17367f, 0xa42a2180,
-            0x90355298,
+            2360076315, 827199990, 1106466061, 2701073148, 3959510361, 3188365797, 1809306134,
+            1326503026,
         ],
         Some(network) if matches!(network.as_bytes(), b"signet") => [
-            0x0fc184e2, 0x903dd4e8, 0xdbbaa83f, 0x6948cda9, 0x17b3c0fc, 0xdb9381f0, 0x5d154868,
-            0x19c84e27,
+            3946892993, 1482087322, 2798354832, 621393348, 863951454, 1669329100, 155707759,
+            1251198063,
         ],
         Some(network) if matches!(network.as_bytes(), b"regtest") => [
-            0x1f66ab34, 0x5e9c2a8b, 0x50e39979, 0x0f99394b, 0x9eb62f2f, 0xbfc3b9a2, 0x84754e75,
-            0xe38104d7,
+            481268694, 3206096537, 2466692286, 4138270219, 1173821733, 3261773735, 2913805307,
+            3795025646,
         ],
         None => [
-            0x659efd5d, 0x31764142, 0xf9cba57a, 0x73c70023, 0x82b1565b, 0xf0f68727, 0x9fb5dac7,
-            0x77696a06,
+            3576661687, 3357259259, 2972154395, 4001004408, 3012737141, 2993326997, 715602082,
+            641613140,
         ],
         _ => panic!("Invalid network type"),
     }
@@ -415,17 +423,29 @@ const HEADER_CHAIN_GUEST_ID: [u32; 8] = {
 
 /// The final circuit that verifies the output of the header chain circuit.
 pub fn final_circuit(guest: &impl ZkvmGuest) {
-    let header_chain_circuit_output = guest.read_from_host::<BlockHeaderCircuitOutput>();
-
-    guest.verify(HEADER_CHAIN_GUEST_ID, &header_chain_circuit_output);
-
+    let start = env::cycle_count();
+    let input: FinalCircuitInput = guest.read_from_host::<FinalCircuitInput>();
+    guest.verify(HEADER_CHAIN_GUEST_ID, &input.block_header_circuit_output);
+    input.spv.verify(
+        input
+            .block_header_circuit_output
+            .chain_state
+            .block_hashes_mmr,
+    );
     let mut hasher = blake3::Hasher::new();
 
-    hasher.update(&header_chain_circuit_output.chain_state.best_block_hash);
-    hasher.update(&header_chain_circuit_output.chain_state.total_work);
+    hasher.update(&input.spv.transaction.txid());
+    hasher.update(
+        &input
+            .block_header_circuit_output
+            .chain_state
+            .best_block_hash,
+    );
+    hasher.update(&input.block_header_circuit_output.chain_state.total_work);
     let final_output = hasher.finalize();
-
     guest.commit(final_output.as_bytes());
+    let end = env::cycle_count();
+    println!("Final circuit took {:?} cycles", end - start);
 }
 
 #[cfg(test)]
