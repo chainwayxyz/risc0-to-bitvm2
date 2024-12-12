@@ -181,20 +181,6 @@ mod tests {
     use hex_literal::hex;
     use risc0_zkvm::compute_image_id;
 
-    // const MAINNET_BLOCK_HASHES: [[u8; 32]; 11] = [
-    //     hex!("000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f"),
-    //     hex!("00000000839a8e6886ab5951d76f411475428afc90947ee320161bbf18eb6048"),
-    //     hex!("000000006a625f06636b8bb6ac7b960a8d03705d1ace08b1a19da3fdcc99ddbd"),
-    //     hex!("0000000082b5015589a3fdf2d4baff403e6f0be035a5d9742c1cae6295464449"),
-    //     hex!("000000004ebadb55ee9096c9a2f8880e09da59c0d68b1c228da88e48844a1485"),
-    //     hex!("000000009b7262315dbf071787ad3656097b892abffd1f95a1a022f896f533fc"),
-    //     hex!("000000003031a0e73735690c5a1ff2a4be82553b2a12b776fbd3a215dc8f778d"),
-    //     hex!("0000000071966c2b1d065fd446b1e485b2c9d9594acd2007ccbd5441cfc89444"),
-    //     hex!("00000000408c48f847aa786c2268fc3e6ec2af68e8468a34a28c61b7f1de0dc6"),
-    //     hex!("000000008d9dc510f23c2657fc4f67bea30078cc05a90eb89e84cc475c080805"),
-    //     hex!("000000002c05cc2e78923c34df87fd108b22221ac6076c18f3ade378a4d915e9")
-    // ];
-
     const MAINNET_BLOCK_HASHES: [[u8; 32]; 11] = [
         hex!("6fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d6190000000000"),
         hex!("4860eb18bf1b1620e37e9490fc8a427514416fd75159ab86688e9a8300000000"),
