@@ -8,6 +8,7 @@ pub use risc0_zkvm;
 pub mod merkle_tree;
 pub mod mmr_guest;
 pub mod mmr_native;
+pub mod spv;
 pub mod transaction;
 pub mod utils;
 

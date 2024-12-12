@@ -554,11 +554,13 @@ checksum = "7c74b8349d32d297c9134b8c88677813a227df8f779daa29bfc29c183fe3dca6"
 name = "core"
 version = "0.1.0"
 dependencies = [
+ "bitcoin",
  "blake3",
  "borsh",
  "circuits",
  "crypto-bigint 0.5.2",
  "hex",
+ "hex-literal",
  "num-bigint 0.4.6",
  "num-traits",
  "risc0-binfmt",
