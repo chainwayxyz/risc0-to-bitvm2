@@ -111,8 +111,6 @@ mod tests {
         &hex!("01000000010000000000000000000000000000000000000000000000000000000000000000ffffffff0704ffff001d010affffffff0100f2052a01000000434104e0041b4b4d9b6feb7221803a35d997efada6e2b5d24f5fc7205f2ea6b62a1adc9983a7a7dab7e93ea791bed5928e7a32286fa4facadd16313b75b467aea77499ac00000000"),
     ];
 
-    // const TESTNET4_BLOCK_HEADERS: [[u8; 80]; 10]
-
     #[test]
     fn test_spv() {
         let mut mmr_native = MMRNative::new();
