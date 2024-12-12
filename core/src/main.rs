@@ -230,11 +230,7 @@ mod tests {
         let spv: SPV = SPV::new(
             tx,
             bitcoin_inclusion_proof,
-            block_header.version,
-            block_header.prev_block_hash,
-            block_header.time,
-            block_header.bits,
-            block_header.nonce,
+            block_header,
             mmr_inclusion_proof,
         );
         let final_circuit_input: FinalCircuitInput = FinalCircuitInput {
