@@ -1,5 +1,6 @@
-use circuits::{Proof, ZkvmGuest, ZkvmHost};
 use std::sync::{Arc, Mutex};
+
+use circuits::zkvm::{Proof, ZkvmGuest, ZkvmHost};
 
 #[derive(Debug, Clone, Default)]
 struct ZkvmData {
