@@ -4,9 +4,11 @@ mod mock_zkvm;
 mod tests {
     use crate::mock_zkvm::MockZkvmHost;
     use borsh::BorshDeserialize;
-    use circuits::{header_chain::{
-        BlockHeaderCircuitOutput, CircuitBlockHeader, HeaderChainCircuitInput,
-    }, header_chain_circuit, zkvm::ZkvmHost};
+    use circuits::{
+        header_chain::{BlockHeaderCircuitOutput, CircuitBlockHeader, HeaderChainCircuitInput},
+        header_chain_circuit,
+        zkvm::ZkvmHost,
+    };
 
     #[test]
     fn test_header_chain_circuit() {

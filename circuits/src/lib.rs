@@ -1,10 +1,14 @@
 use final_circuit::FinalCircuitInput;
-use header_chain::{apply_blocks, BlockHeaderCircuitOutput, ChainState, HeaderChainCircuitInput, HeaderChainPrevProofType};
+use header_chain::{
+    apply_blocks, BlockHeaderCircuitOutput, ChainState, HeaderChainCircuitInput,
+    HeaderChainPrevProofType,
+};
 use risc0_zkvm::guest::env::{self};
 use zkvm::ZkvmGuest;
 
 pub mod header_chain;
 pub use risc0_zkvm;
+pub mod final_circuit;
 pub mod merkle_tree;
 pub mod mmr_guest;
 pub mod mmr_native;
@@ -12,7 +16,6 @@ pub mod spv;
 pub mod transaction;
 pub mod utils;
 pub mod zkvm;
-pub mod final_circuit;
 
 /// The main entry point of the header chain circuit.
 pub fn header_chain_circuit(guest: &impl ZkvmGuest) {
@@ -44,24 +47,24 @@ pub fn header_chain_circuit(guest: &impl ZkvmGuest) {
 const HEADER_CHAIN_GUEST_ID: [u32; 8] = {
     match option_env!("BITCOIN_NETWORK") {
         Some(network) if matches!(network.as_bytes(), b"mainnet") => [
-            3698181899, 2493383995, 2645667453, 2581037551, 2903196337, 1963019158, 1819266610,
-            2816371110,
+            2582868723, 1521080230, 649720670, 1875083250, 2004955238, 1828385669, 4236861372,
+            3439193906,
         ],
         Some(network) if matches!(network.as_bytes(), b"testnet4") => [
-            2054544620, 3893068247, 1562334679, 3817290253, 716342840, 155273260, 3527496151,
-            3465943753,
+            3734931792, 1866803528, 3946226235, 2178008193, 2076699023, 2013177735, 3599336517,
+            2600457464,
         ],
         Some(network) if matches!(network.as_bytes(), b"signet") => [
-            3135044400, 3159803097, 153443868, 2355119596, 521371102, 287799635, 3711739625,
-            229413818,
+            782875464, 3409446944, 1399471818, 163718061, 1363437585, 1238883005, 1901210571,
+            1552828871,
         ],
         Some(network) if matches!(network.as_bytes(), b"regtest") => [
-            2566738292, 148345840, 1410711648, 1906697482, 1586982940, 3767445383, 3240218910,
-            4082615392,
+            3144683151, 589096142, 2457639393, 3546468872, 4119149927, 2741065617, 2668617476,
+            432086584,
         ],
         None => [
-            3698181899, 2493383995, 2645667453, 2581037551, 2903196337, 1963019158, 1819266610,
-            2816371110,
+            2582868723, 1521080230, 649720670, 1875083250, 2004955238, 1828385669, 4236861372,
+            3439193906,
         ],
         _ => panic!("Invalid network type"),
     }

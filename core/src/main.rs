@@ -174,7 +174,8 @@ fn reverse_bits_and_copy(input: &[u8], output: &mut [u8]) {
 #[cfg(test)]
 mod tests {
     use circuits::{
-        final_circuit::FinalCircuitInput, merkle_tree::BitcoinMerkleTree, mmr_native::MMRNative, spv::SPV, transaction::CircuitTransaction
+        final_circuit::FinalCircuitInput, merkle_tree::BitcoinMerkleTree, mmr_native::MMRNative,
+        spv::SPV, transaction::CircuitTransaction,
     };
     use docker::stark_to_succinct;
     use hex_literal::hex;

@@ -141,6 +141,13 @@ pub fn stark_to_succinct(
         .unwrap()
         .to_str_radix(16);
 
+    // If the length of the hexadecimal string is odd, add a leading zero
+    let output_content_hex = if output_content_hex.len() % 2 == 0 {
+        output_content_hex
+    } else {
+        format!("0{}", output_content_hex)
+    };
+
     // Step 3: Decode the hexadecimal string to a byte vector
     let output_byte_vec = hex::decode(&output_content_hex).unwrap();
     // let output_byte_vec = hex::decode(output_hex).unwrap();
