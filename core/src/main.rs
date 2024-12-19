@@ -197,6 +197,7 @@ mod tests {
 
     use super::*;
     // #[ignore = "This is to only test final proof generation"]
+    /// Run this test only when build for mainnet
     #[test]
     fn test_final_circuit() {
         let final_circuit_elf = include_bytes!(
