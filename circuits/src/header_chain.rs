@@ -345,7 +345,7 @@ pub struct FinalCircuitInput {
 }
 
 /// The input proof of the header chain circuit.
-/// The proof can be either None (implying the beginning) or a Succinct Risc0 proof..
+/// The proof can be either None (implying the beginning) or a Succinct Risc0 proof.
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug, BorshDeserialize, BorshSerialize)]
 pub enum HeaderChainPrevProofType {
     GenesisBlock,
@@ -398,24 +398,24 @@ pub fn header_chain_circuit(guest: &impl ZkvmGuest) {
 const HEADER_CHAIN_GUEST_ID: [u32; 8] = {
     match option_env!("BITCOIN_NETWORK") {
         Some(network) if matches!(network.as_bytes(), b"mainnet") => [
-            3576661687, 3357259259, 2972154395, 4001004408, 3012737141, 2993326997, 715602082,
-            641613140,
+            2805315517, 3981369525, 4101271212, 2183331537, 1225146041, 536873320, 1848212262,
+            1525352198,
         ],
         Some(network) if matches!(network.as_bytes(), b"testnet4") => [
-            2360076315, 827199990, 1106466061, 2701073148, 3959510361, 3188365797, 1809306134,
-            1326503026,
+            325145987, 174392726, 3686429875, 35857668, 3793296787, 4064995293, 4089473277,
+            2582992435,
         ],
         Some(network) if matches!(network.as_bytes(), b"signet") => [
-            3946892993, 1482087322, 2798354832, 621393348, 863951454, 1669329100, 155707759,
-            1251198063,
+            195144048, 3680338064, 3409084085, 3014496107, 1856016187, 81547799, 2355110391,
+            415000562,
         ],
         Some(network) if matches!(network.as_bytes(), b"regtest") => [
-            481268694, 3206096537, 2466692286, 4138270219, 1173821733, 3261773735, 2913805307,
-            3795025646,
+            1232821092, 199665758, 3233553020, 2368413263, 4152299096, 2690002859, 1705012475,
+            1292244974,
         ],
         None => [
-            3576661687, 3357259259, 2972154395, 4001004408, 3012737141, 2993326997, 715602082,
-            641613140,
+            2805315517, 3981369525, 4101271212, 2183331537, 1225146041, 536873320, 1848212262,
+            1525352198,
         ],
         _ => panic!("Invalid network type"),
     }
