@@ -49,7 +49,9 @@ git lfs pull
 
 To build the prover:
 ```
+cd groth16_proof
 docker build -f docker/prover.Dockerfile . -t risc0-groth16-prover
+cd ..
 ```
 
 
@@ -82,6 +84,7 @@ Our goal is to be able to (optimistically) prove any computation inside BitVM. O
 ### Bitcoin
  In the case of Bitcoin, the main computations we want to prove are the bridge operations (PegIn/PegOut). This requires the proving of the Bitcoin block headers. With `header-chain-circuit`, one can prove the current state of the Bitcoin given the block headers. It does not necessarily prevent the malicious actors to generate proofs for their private forks, but the calculation of the `ChainState` is the basis for the conflict resolution. For more, see:
  [Proof of work](https://en.bitcoin.it/wiki/Proof_of_work).
+ With a small modification to `final-circuit`, anyone can prove the inclusion of a transaction inside a block on the header chain.
 
 
 ## Acknowledgments
