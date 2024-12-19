@@ -210,7 +210,7 @@ mod tests {
 
         let original_tx: Transaction = bridge_tx.clone().into();
         assert_eq!(&original_tx, bridge_tx.inner());
-        assert_eq!(original_tx.txid().to_byte_array(), bridge_tx.txid());
+        assert_eq!(original_tx.compute_txid().to_byte_array(), bridge_tx.txid());
     }
 
     #[test]
@@ -280,6 +280,6 @@ mod tests {
         assert_eq!(bridge_tx.input[0].script_sig, script_sig);
         assert_eq!(bridge_tx.output[0].script_pubkey, script_pubkey);
         assert_eq!(bridge_tx.output[0].value, Amount::from_sat(50000));
-        assert_eq!(bridge_tx.txid(), tx.txid().to_byte_array());
+        assert_eq!(bridge_tx.txid(), tx.compute_txid().to_byte_array());
     }
 }
