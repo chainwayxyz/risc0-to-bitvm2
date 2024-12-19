@@ -22,4 +22,4 @@ num-traits.workspace = true
 
 [dev-dependencies]
 hex-literal = "0.4.1"
-bitcoin = "0.31.0"
+bitcoin = "0.32.5"
