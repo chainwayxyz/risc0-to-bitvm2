@@ -1,7 +1,6 @@
 use final_circuit::FinalCircuitInput;
 use header_chain::{
-    apply_blocks, BlockHeaderCircuitOutput, ChainState, HeaderChainCircuitInput,
-    HeaderChainPrevProofType,
+    apply_blocks, BlockHeaderCircuitOutput, ChainState, HeaderChainCircuitInput, HeaderChainPrevProofType, NETWORK_CONSTANTS, NETWORK_TYPE
 };
 use risc0_zkvm::guest::env::{self};
 use zkvm::ZkvmGuest;
@@ -22,8 +21,8 @@ pub fn header_chain_circuit(guest: &impl ZkvmGuest) {
     let start = risc0_zkvm::guest::env::cycle_count();
 
     let input: HeaderChainCircuitInput = guest.read_from_host();
-    // println!("Detected network: {:?}", NETWORK_TYPE);
-    // println!("NETWORK_CONSTANTS: {:?}", NETWORK_CONSTANTS);
+    println!("Detected network: {:?}", NETWORK_TYPE);
+    println!("NETWORK_CONSTANTS: {:?}", NETWORK_CONSTANTS);
     let mut chain_state = match input.prev_proof {
         HeaderChainPrevProofType::GenesisBlock => ChainState::new(),
         HeaderChainPrevProofType::PrevProof(prev_proof) => {

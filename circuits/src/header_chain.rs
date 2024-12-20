@@ -22,7 +22,7 @@ pub struct NetworkConstants {
     pub max_target: U256,
 }
 
-const NETWORK_TYPE: &str = {
+pub const NETWORK_TYPE: &str = {
     match option_env!("BITCOIN_NETWORK") {
         Some(network) if matches!(network.as_bytes(), b"mainnet") => "mainnet",
         Some(network) if matches!(network.as_bytes(), b"testnet4") => "testnet4",
@@ -37,7 +37,7 @@ const NETWORK_TYPE: &str = {
 const IS_REGTEST: bool = matches!(NETWORK_TYPE.as_bytes(), b"regtest");
 const IS_TESTNET4: bool = matches!(NETWORK_TYPE.as_bytes(), b"testnet4");
 
-const NETWORK_CONSTANTS: NetworkConstants = {
+pub const NETWORK_CONSTANTS: NetworkConstants = {
     match option_env!("BITCOIN_NETWORK") {
         Some(n) if matches!(n.as_bytes(), b"signet") => NetworkConstants {
             max_bits: 0x1E0377AE,
@@ -94,8 +94,8 @@ pub struct CircuitBlockHeader {
 
 impl CircuitBlockHeader {
     pub fn compute_block_hash(&self) -> [u8; 32] {
-        // println!("Computing block hash");
-        // println!("Input: {:?}", self);
+        println!("Computing block hash");
+        println!("Input: {:?}", self);
         let mut hasher = Sha256::new();
         hasher.update(&self.version.to_le_bytes());
         hasher.update(&self.prev_block_hash);
@@ -110,7 +110,7 @@ impl CircuitBlockHeader {
             .finalize()
             .try_into()
             .expect("SHA256 should produce a 32-byte output");
-        // println!("Output: {:?}", result);
+        println!("Output: {:?}", result);
         result
     }
 }
@@ -157,7 +157,7 @@ pub struct ChainState {
 impl ChainState {
     pub fn new() -> Self {
         ChainState {
-            block_height: 0,
+            block_height: u32::MAX,
             total_work: [0u8; 32],
             best_block_hash: [0u8; 32],
             current_target_bits: NETWORK_CONSTANTS.max_bits,
@@ -180,8 +180,8 @@ fn validate_timestamp(block_time: u32, prev_11_timestamps: [u32; 11]) -> bool {
 }
 
 pub fn bits_to_target(bits: u32) -> [u8; 32] {
-    // println!("Converting bits to target");
-    // println!("Input: {:?}", bits);
+    println!("Converting bits to target");
+    println!("Input: {:?}", bits);
     let size = (bits >> 24) as usize;
     let mantissa = bits & 0x00ffffff;
 
@@ -190,13 +190,13 @@ pub fn bits_to_target(bits: u32) -> [u8; 32] {
     } else {
         U256::from(mantissa) << (8 * (size - 3))
     };
-    // println!("Output: {:?}", target.to_be_bytes());
+    println!("Output: {:?}", target.to_be_bytes());
     target.to_be_bytes()
 }
 
 fn target_to_bits(target: &[u8; 32]) -> u32 {
-    // println!("Converting target to bits");
-    // println!("Input: {:?}", target);
+    println!("Converting target to bits");
+    println!("Input: {:?}", target);
     let target_u256 = U256::from_be_slice(target);
     let target_bits = target_u256.bits();
     let size = (263 - target_bits) / 8;
@@ -205,7 +205,7 @@ fn target_to_bits(target: &[u8; 32]) -> u32 {
     compact_target[1] = target[size - 1 as usize];
     compact_target[2] = target[size + 0 as usize];
     compact_target[3] = target[size + 1 as usize];
-    // println!("Output: {:?}", u32::from_be_bytes(compact_target));
+    println!("Output: {:?}", u32::from_be_bytes(compact_target));
     u32::from_be_bytes(compact_target)
 }
 
@@ -214,11 +214,11 @@ fn calculate_new_difficulty(
     last_timestamp: u32,
     current_target: u32,
 ) -> [u8; 32] {
-    // println!("Calculating new difficulty");
-    // println!(
-    //     "Input: epoch_start_time: {}, last_timestamp: {}, current_target: {}",
-    //     epoch_start_time, last_timestamp, current_target
-    // );
+    println!("Calculating new difficulty");
+    println!(
+        "Input: epoch_start_time: {}, last_timestamp: {}, current_target: {}",
+        epoch_start_time, last_timestamp, current_target
+    );
     let mut actual_timespan = last_timestamp - epoch_start_time;
     if actual_timespan < EXPECTED_EPOCH_TIMESPAN / 4 {
         actual_timespan = EXPECTED_EPOCH_TIMESPAN / 4;
@@ -234,13 +234,13 @@ fn calculate_new_difficulty(
     if new_target > NETWORK_CONSTANTS.max_target {
         new_target = NETWORK_CONSTANTS.max_target;
     }
-    // println!("Output: {:?}", new_target.to_be_bytes());
+    println!("Output: {:?}", new_target.to_be_bytes());
     new_target.to_be_bytes()
 }
 
 fn check_hash_valid(hash: &[u8; 32], target_bytes: &[u8; 32]) {
-    // println!("Checking hash validity");
-    // println!("Input: hash: {:?}, target_bytes: {:?}", hash, target_bytes);
+    println!("Checking hash validity");
+    println!("Input: hash: {:?}, target_bytes: {:?}", hash, target_bytes);
     for i in 0..32 {
         if hash[31 - i] < target_bytes[i] {
             return;
@@ -251,12 +251,12 @@ fn check_hash_valid(hash: &[u8; 32], target_bytes: &[u8; 32]) {
 }
 
 fn calculate_work(target: &[u8; 32]) -> U256 {
-    // println!("Calculating work");
-    // println!("Input: {:?}", target);
+    println!("Calculating work");
+    println!("Input: {:?}", target);
     let target = U256::from_be_slice(target);
     let target_plus_one = target.saturating_add(&U256::ONE);
     let work = U256::MAX.wrapping_div(&target_plus_one);
-    // println!("Output: {:?}", work);
+    println!("Output: {:?}", work);
     work
 }
 
@@ -266,9 +266,9 @@ pub fn apply_blocks(chain_state: &mut ChainState, block_headers: Vec<CircuitBloc
     } else {
         bits_to_target(chain_state.current_target_bits)
     };
+    let mut current_work: U256 = U256::from_be_bytes(chain_state.total_work);
 
-    let mut current_work_add = calculate_work(&current_target_bytes);
-    let mut total_work = U256::from_be_bytes(chain_state.total_work);
+    // let mut total_work = U256::from_be_bytes(chain_state.total_work);
 
     let mut last_block_time = if IS_TESTNET4 {
         if chain_state.block_height == u32::MAX {
@@ -293,7 +293,7 @@ pub fn apply_blocks(chain_state: &mut ChainState, block_headers: Vec<CircuitBloc
                 (
                     current_target_bytes,
                     chain_state.current_target_bits,
-                    current_work_add,
+                    calculate_work(&current_target_bytes),
                 )
             };
 
@@ -315,11 +315,13 @@ pub fn apply_blocks(chain_state: &mut ChainState, block_headers: Vec<CircuitBloc
 
         chain_state.block_hashes_mmr.append(new_block_hash);
         chain_state.best_block_hash = new_block_hash;
-        total_work = total_work.wrapping_add(&work_to_add);
+        current_work = current_work.wrapping_add(&work_to_add);
         chain_state.block_height = chain_state.block_height.wrapping_add(1);
 
         if !IS_REGTEST && chain_state.block_height % BLOCKS_PER_EPOCH == 0 {
+            println!("Epoch end");
             chain_state.epoch_start_time = block_header.time;
+            println!("Epoch start time: {:?}", chain_state.epoch_start_time);
         }
 
         chain_state.prev_11_timestamps[chain_state.block_height as usize % 11] = block_header.time;
@@ -329,18 +331,20 @@ pub fn apply_blocks(chain_state: &mut ChainState, block_headers: Vec<CircuitBloc
         }
 
         if !IS_REGTEST && chain_state.block_height % BLOCKS_PER_EPOCH == BLOCKS_PER_EPOCH - 1 {
+            println!("Adjusting difficulty");
             current_target_bytes = calculate_new_difficulty(
                 chain_state.epoch_start_time,
                 block_header.time,
                 chain_state.current_target_bits,
             );
-
+            println!("New target: {:?}", current_target_bytes);
             chain_state.current_target_bits = target_to_bits(&current_target_bytes);
-            current_work_add = calculate_work(&current_target_bytes);
         }
+        println!("Chain state: {:?}", chain_state);
+        println!("Current work: {:?}", current_work);
     }
 
-    chain_state.total_work = total_work.to_be_bytes();
+    chain_state.total_work = current_work.to_be_bytes();
 }
 
 /// The output of the header chain circuit.

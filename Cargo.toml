@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["circuits", "core", "guests/header-chain", "guests/final-circuit", "boundless-client"]
+members = ["circuits", "core", "guests/header-chain", "guests/final-circuit"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -9,13 +9,11 @@ hex = "0.4.3"
 risc0-zkvm = { version="1.2.0", features = ["prove"]}
 risc0-zkp = "1.2.0"
 env_logger = "0.10"
-borsh = {version = "1.5.1", features = ["derive"] }
+borsh = {version = "1.5.3", features = ["derive"] }
 serde = "1.0"
 serde_json = "1.0.108"
 anyhow = { version = "1.0", default-features = false}
 risc0-groth16 = {version="1.2.0", features=["prove"]}
-bitcoin-pow = {path="./risc0_circuits/bitcoin-pow"}
-verify-stark = {path="./risc0_circuits/verify-stark"}
 tempfile = "3.10.1"
 bitcoincore-rpc = "0.19.0"
 crypto-bigint = { git = "https://github.com/risc0/RustCrypto-crypto-bigint", tag = "v0.5.2-risczero.0", default-features = false }
