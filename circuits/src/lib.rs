@@ -21,8 +21,8 @@ pub fn header_chain_circuit(guest: &impl ZkvmGuest) {
     let start = risc0_zkvm::guest::env::cycle_count();
 
     let input: HeaderChainCircuitInput = guest.read_from_host();
-    println!("Detected network: {:?}", NETWORK_TYPE);
-    println!("NETWORK_CONSTANTS: {:?}", NETWORK_CONSTANTS);
+    // println!("Detected network: {:?}", NETWORK_TYPE);
+    // println!("NETWORK_CONSTANTS: {:?}", NETWORK_CONSTANTS);
     let mut chain_state = match input.prev_proof {
         HeaderChainPrevProofType::GenesisBlock => ChainState::new(),
         HeaderChainPrevProofType::PrevProof(prev_proof) => {
@@ -46,8 +46,14 @@ pub fn header_chain_circuit(guest: &impl ZkvmGuest) {
 const HEADER_CHAIN_GUEST_ID: [u32; 8] = {
     match option_env!("BITCOIN_NETWORK") {
         Some(network) if matches!(network.as_bytes(), b"mainnet") => [
-            2582868723, 1521080230, 649720670, 1875083250, 2004955238, 1828385669, 4236861372,
-            3439193906,
+            3712544376,
+            1780998879,
+            2274605232,
+            4170210407,
+            3028771271,
+            1050228934,
+            2142079250,
+            384569559,
         ],
         Some(network) if matches!(network.as_bytes(), b"testnet4") => [
             3734931792, 1866803528, 3946226235, 2178008193, 2076699023, 2013177735, 3599336517,
@@ -62,8 +68,14 @@ const HEADER_CHAIN_GUEST_ID: [u32; 8] = {
             432086584,
         ],
         None => [
-            2582868723, 1521080230, 649720670, 1875083250, 2004955238, 1828385669, 4236861372,
-            3439193906,
+            3712544376,
+            1780998879,
+            2274605232,
+            4170210407,
+            3028771271,
+            1050228934,
+            2142079250,
+            384569559,
         ],
         _ => panic!("Invalid network type"),
     }

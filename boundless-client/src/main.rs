@@ -109,8 +109,6 @@ async fn main() -> Result<(), anyhow::Error> {
     //     Input::inline(input.clone())
     // };
 
-    let image_url = boundless_client.upload_input(&input_bytes).await?;
-
     let env = ExecutorEnv::builder().write_slice(&input_bytes).build()?;
     let session_info = default_executor().execute(env, ELF)?;
     let mcycles_count = session_info
