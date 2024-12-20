@@ -200,12 +200,8 @@ mod tests {
     /// Run this test only when build for the mainnet
     #[test]
     fn test_final_circuit() {
-        let final_circuit_elf = include_bytes!(
-            "../../target/riscv-guest/riscv32im-risc0-zkvm-elf/docker/final_guest/final-guest"
-        );
-        let header_chain_circuit_elf = include_bytes!(
-            "../../target/riscv-guest/riscv32im-risc0-zkvm-elf/docker/header_chain_guest/header-chain-guest"
-        );
+        let final_circuit_elf = include_bytes!("../../elfs/final-guest");
+        let header_chain_circuit_elf = include_bytes!("../../elfs/mainnet-header-chain-guest");
         println!(
             "Header chain circuit id: {:#?}",
             compute_image_id(header_chain_circuit_elf)

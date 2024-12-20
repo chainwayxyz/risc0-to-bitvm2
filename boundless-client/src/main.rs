@@ -4,12 +4,16 @@ use alloy::signers::local::PrivateKeySigner;
 use alloy_primitives::{utils::parse_ether, Address};
 use anyhow::{bail, ensure};
 use borsh::BorshDeserialize;
-use boundless_market::{client::ClientBuilder, storage::StorageProviderConfig, contracts::{ProofRequest, Predicate, Requirements, Input, Offer}};
+use boundless_market::{
+    client::ClientBuilder,
+    contracts::{Input, Offer, Predicate, ProofRequest, Requirements},
+    storage::StorageProviderConfig,
+};
 use circuits::header_chain::{CircuitBlockHeader, HeaderChainCircuitInput};
 use clap::Parser;
+use risc0_zkvm::sha::Digestible;
 use risc0_zkvm::{compute_image_id, default_executor, ExecutorEnv};
 use url::Url;
-use risc0_zkvm::sha::Digestible;
 
 const ELF: &[u8] = include_bytes!("../../elfs/mainnet-header-chain-guest");
 
@@ -101,9 +105,9 @@ async fn main() -> Result<(), anyhow::Error> {
     // If the input exceeds 2 kB, upload the input and provide its URL instead, as a rule of thumb.
     let input_url = boundless_client.upload_input(&input_bytes).await?;
     // if input_bytes.len() > 2 << 10 {
-        // let input_url = boundless_client.upload_input(&input_bytes).await?;
-        // tracing::info!("Uploaded input to {}", input_url);
-        // Input::url(input_url);
+    // let input_url = boundless_client.upload_input(&input_bytes).await?;
+    // tracing::info!("Uploaded input to {}", input_url);
+    // Input::url(input_url);
     // } else {
     //     tracing::info!("Sending input inline with request");
     //     Input::inline(input.clone())
@@ -193,5 +197,4 @@ async fn main() -> Result<(), anyhow::Error> {
     // );
 
     Ok(())
-
 }

@@ -36,9 +36,11 @@ pub const NETWORK_TYPE: &str = {
 
 // Const evaluation of network type from environment
 const IS_REGTEST: bool = matches!(NETWORK_TYPE.as_bytes(), b"regtest");
-const WORK_REGTEST: U256 = U256::from_be_hex("0000000000000000000000000000000000000000000000000000000000000002");
+const WORK_REGTEST: U256 =
+    U256::from_be_hex("0000000000000000000000000000000000000000000000000000000000000002");
 const IS_TESTNET4: bool = matches!(NETWORK_TYPE.as_bytes(), b"testnet4");
-const MINIMUM_WORK_TESTNET: U256 = U256::from_be_hex("0000000000000000000000000000000000000000000000000000000100010001");
+const MINIMUM_WORK_TESTNET: U256 =
+    U256::from_be_hex("0000000000000000000000000000000000000000000000000000000100010001");
 
 pub const NETWORK_CONSTANTS: NetworkConstants = {
     match option_env!("BITCOIN_NETWORK") {
@@ -47,29 +49,40 @@ pub const NETWORK_CONSTANTS: NetworkConstants = {
             max_target: U256::from_be_hex(
                 "00000377AE000000000000000000000000000000000000000000000000000000",
             ),
-            max_target_bytes: [0, 0, 3, 119, 174, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-
+            max_target_bytes: [
+                0, 0, 3, 119, 174, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0,
+            ],
         },
         Some(n) if matches!(n.as_bytes(), b"regtest") => NetworkConstants {
             max_bits: 0x207FFFFF,
             max_target: U256::from_be_hex(
                 "7FFFFF0000000000000000000000000000000000000000000000000000000000",
             ),
-            max_target_bytes: [127, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            max_target_bytes: [
+                127, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0,
+            ],
         },
         Some(n) if matches!(n.as_bytes(), b"testnet4") => NetworkConstants {
             max_bits: 0x1D00FFFF,
             max_target: U256::from_be_hex(
                 "00000000FFFF0000000000000000000000000000000000000000000000000000",
             ),
-            max_target_bytes: [0, 0, 0, 0, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            max_target_bytes: [
+                0, 0, 0, 0, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0,
+            ],
         },
         Some(n) if matches!(n.as_bytes(), b"mainnet") => NetworkConstants {
             max_bits: 0x1D00FFFF,
             max_target: U256::from_be_hex(
                 "00000000FFFF0000000000000000000000000000000000000000000000000000",
             ),
-            max_target_bytes: [0, 0, 0, 0, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            max_target_bytes: [
+                0, 0, 0, 0, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0,
+            ],
         },
         // Default to mainnet for None
         None => NetworkConstants {
@@ -77,7 +90,10 @@ pub const NETWORK_CONSTANTS: NetworkConstants = {
             max_target: U256::from_be_hex(
                 "00000000FFFF0000000000000000000000000000000000000000000000000000",
             ),
-            max_target_bytes: [0, 0, 0, 0, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            max_target_bytes: [
+                0, 0, 0, 0, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0,
+            ],
         },
         _ => panic!("Unsupported network"),
     }
@@ -290,34 +306,35 @@ pub fn apply_blocks(chain_state: &mut ChainState, block_headers: Vec<CircuitBloc
     };
 
     for block_header in block_headers {
-        let (target_to_use, expected_bits, work_to_add) =
-            if IS_TESTNET4 {
-                // println!("Testnet4");
-                if block_header.bits == NETWORK_CONSTANTS.max_bits && chain_state.current_target_bits != NETWORK_CONSTANTS.max_bits {
-                    // println!("Abnormal block detected. Checking timestamp...");
-                    // println!("Block time: {:?}", block_header.time);
-                    // println!("Last block time: {:?}", last_block_time);
-                    // let max_target_bytes = NETWORK_CONSTANTS.max_target.to_be_bytes();
-                    assert!(block_header.time > last_block_time + 1200);
-                    (
-                        NETWORK_CONSTANTS.max_target_bytes,
-                        NETWORK_CONSTANTS.max_bits,
-                        MINIMUM_WORK_TESTNET,
-                    )
-                } else {
-                    (
-                        current_target_bytes,
-                        chain_state.current_target_bits,
-                        calculate_work(&current_target_bytes),
-                    )
-                }
+        let (target_to_use, expected_bits, work_to_add) = if IS_TESTNET4 {
+            // println!("Testnet4");
+            if block_header.bits == NETWORK_CONSTANTS.max_bits
+                && chain_state.current_target_bits != NETWORK_CONSTANTS.max_bits
+            {
+                // println!("Abnormal block detected. Checking timestamp...");
+                // println!("Block time: {:?}", block_header.time);
+                // println!("Last block time: {:?}", last_block_time);
+                // let max_target_bytes = NETWORK_CONSTANTS.max_target.to_be_bytes();
+                assert!(block_header.time > last_block_time + 1200);
+                (
+                    NETWORK_CONSTANTS.max_target_bytes,
+                    NETWORK_CONSTANTS.max_bits,
+                    MINIMUM_WORK_TESTNET,
+                )
             } else {
                 (
                     current_target_bytes,
                     chain_state.current_target_bits,
                     calculate_work(&current_target_bytes),
                 )
-            };
+            }
+        } else {
+            (
+                current_target_bytes,
+                chain_state.current_target_bits,
+                calculate_work(&current_target_bytes),
+            )
+        };
 
         let new_block_hash = block_header.compute_block_hash();
 
