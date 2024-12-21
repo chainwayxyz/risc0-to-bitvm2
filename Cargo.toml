@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["circuits", "core", "header-chain", "final-spv"]
+members = ["core", "header-chain", "final-spv", "boundless-client"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

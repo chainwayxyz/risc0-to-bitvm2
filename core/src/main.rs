@@ -1,5 +1,5 @@
 use borsh::BorshDeserialize;
-use circuits::{
+use header_chain::{
     header_chain::{
         BlockHeaderCircuitOutput, CircuitBlockHeader, HeaderChainCircuitInput,
         HeaderChainPrevProofType,
@@ -173,11 +173,13 @@ fn reverse_bits_and_copy(input: &[u8], output: &mut [u8]) {
 
 #[cfg(test)]
 mod tests {
-    use circuits::{
-        final_circuit::FinalCircuitInput, merkle_tree::BitcoinMerkleTree, mmr_native::MMRNative,
-        spv::SPV, transaction::CircuitTransaction,
-    };
+
     use docker::stark_to_succinct;
+    use final_spv::{
+        final_circuit::FinalCircuitInput, merkle_tree::BitcoinMerkleTree, spv::SPV,
+        transaction::CircuitTransaction,
+    };
+    use header_chain::mmr_native::MMRNative;
     use hex_literal::hex;
     use risc0_zkvm::compute_image_id;
 

@@ -9,7 +9,7 @@ use boundless_market::{
     contracts::{Input, Offer, Predicate, ProofRequest, Requirements},
     storage::StorageProviderConfig,
 };
-use circuits::header_chain::{CircuitBlockHeader, HeaderChainCircuitInput};
+use header_chain::header_chain::{CircuitBlockHeader, HeaderChainCircuitInput};
 use clap::Parser;
 use risc0_zkvm::sha::Digestible;
 use risc0_zkvm::{compute_image_id, default_executor, ExecutorEnv};
@@ -18,7 +18,7 @@ use url::Url;
 const ELF: &[u8] = include_bytes!("../../elfs/mainnet-header-chain-guest");
 
 /// Timeout for the transaction to be confirmed.
-pub const TX_TIMEOUT: Duration = Duration::from_secs(30);
+pub const TX_TIMEOUT: Duration = Duration::from_secs(u64::MAX);
 
 /// Arguments of the publisher CLI.
 #[derive(Parser, Debug)]
@@ -70,8 +70,8 @@ async fn main() -> Result<(), anyhow::Error> {
 
     let input = HeaderChainCircuitInput {
         method_id: [0; 8],
-        prev_proof: circuits::header_chain::HeaderChainPrevProofType::GenesisBlock,
-        block_headers: headers[0..1000].to_vec(),
+        prev_proof: header_chain::header_chain::HeaderChainPrevProofType::GenesisBlock,
+        block_headers: headers[0..2000].to_vec(),
     };
 
     // Create a Boundless client from the provided parameters.
@@ -138,11 +138,16 @@ async fn main() -> Result<(), anyhow::Error> {
     let (request_id, expires_at) = boundless_client.submit_request(&request).await?;
     tracing::info!("Request 0x{request_id:x} submitted");
 
-    // Wait for the request to be fulfilled by the market, returning the journal and seal.
-    tracing::info!("Waiting for 0x{request_id:x} to be fulfilled");
+    // Wait indefinitely for the request to be fulfilled by the market
+    tracing::info!("Waiting for 0x{request_id:x} to be fulfilled (will wait indefinitely)");
     let (journal, seal) = boundless_client
-        .wait_for_request_fulfillment(request_id, Duration::from_secs(5), expires_at)
+        .wait_for_request_fulfillment(
+            request_id,
+            Duration::from_secs(u64::MAX),  // Set to maximum duration
+            expires_at
+        )
         .await?;
+    
     tracing::info!("Request 0x{request_id:x} fulfilled");
     tracing::info!("Journal: {:#?}", journal);
     tracing::info!("Seal: {:#?}", seal);
