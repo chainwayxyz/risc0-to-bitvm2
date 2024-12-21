@@ -39,9 +39,6 @@ struct Args {
     /// Storage provider to use
     #[clap(flatten)]
     storage_config: Option<StorageProviderConfig>,
-    /// Address of the EvenNumber contract.
-    // #[clap(short, long, env)]
-    // even_number_address: Address,
     /// Address of the RiscZeroSetVerifier contract.
     #[clap(short, long, env)]
     set_verifier_address: Address,
@@ -95,23 +92,10 @@ async fn main() -> Result<(), anyhow::Error> {
     let image_url = boundless_client.upload_image(ELF).await?;
     tracing::info!("Uploaded image to {}", image_url);
 
-    // tracing::info!("Number to publish: {}", args.number);
-    // let input = InputBuilder::new()
-    //     .write_slice(&U256::from(args.number).abi_encode())
-    //     .build();
-
     let input_bytes = borsh::to_vec(&input).unwrap();
 
     // If the input exceeds 2 kB, upload the input and provide its URL instead, as a rule of thumb.
     let input_url = boundless_client.upload_input(&input_bytes).await?;
-    // if input_bytes.len() > 2 << 10 {
-    // let input_url = boundless_client.upload_input(&input_bytes).await?;
-    // tracing::info!("Uploaded input to {}", input_url);
-    // Input::url(input_url);
-    // } else {
-    //     tracing::info!("Sending input inline with request");
-    //     Input::inline(input.clone())
-    // };
 
     let env = ExecutorEnv::builder().write_slice(&input_bytes).build()?;
     let session_info = default_executor().execute(env, ELF)?;
@@ -162,39 +146,6 @@ async fn main() -> Result<(), anyhow::Error> {
     tracing::info!("Request 0x{request_id:x} fulfilled");
     tracing::info!("Journal: {:#?}", journal);
     tracing::info!("Seal: {:#?}", seal);
-
-    // Interact with the EvenNumber contract by calling the set function with our number and
-    // the seal (i.e. proof) returned by the market.
-    // let even_number = IEvenNumberInstance::new(
-    //     args.even_number_address,
-    //     boundless_client.provider().clone(),
-    // );
-    // let set_number = even_number
-    //     .set(U256::from(args.number), seal)
-    //     .from(boundless_client.caller());
-
-    // tracing::info!("Broadcasting tx calling EvenNumber set function");
-    // let pending_tx = set_number.send().await.context("failed to broadcast tx")?;
-    // tracing::info!("Sent tx {}", pending_tx.tx_hash());
-    // let tx_hash = pending_tx
-    //     .with_timeout(Some(TX_TIMEOUT))
-    //     .watch()
-    //     .await
-    //     .context("failed to confirm tx")?;
-    // tracing::info!("Tx {:?} confirmed", tx_hash);
-
-    // We query the value stored at the EvenNumber address to check it was set correctly
-    // let number = even_number
-    //     .get()
-    //     .call()
-    //     .await
-    //     .context("failed to get number from contract")?
-    //     ._0;
-    // tracing::info!(
-    //     "Number for address: {:?} is set to {:?}",
-    //     boundless_client.caller(),
-    //     number
-    // );
 
     Ok(())
 }

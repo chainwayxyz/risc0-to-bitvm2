@@ -6,9 +6,9 @@ WORKDIR /src
 COPY . .
 
 # Set compile-time environment variables
-ENV CARGO_MANIFEST_PATH="guests/header-chain/guest/Cargo.toml"
+ENV CARGO_MANIFEST_PATH="header-chain-guest/guest/Cargo.toml"
 ENV RUSTFLAGS="-C passes=loweratomic -C link-arg=-Ttext=0x00200800 -C link-arg=--fatal-warnings"
-ENV CARGO_TARGET_DIR="guests/header-chain/guest/target"
+ENV CARGO_TARGET_DIR="header-chain-guest/guest/target"
 ENV CC_riscv32im_risc0_zkvm_elf="/root/.local/share/cargo-risczero/cpp/bin/riscv32-unknown-elf-gcc"
 ENV CFLAGS_riscv32im_risc0_zkvm_elf="-march=rv32im -nostdlib"
 
@@ -24,5 +24,5 @@ RUN echo "Building for network: ${BITCOIN_NETWORK}" && \
 
 FROM scratch AS export
 ARG BITCOIN_NETWORK
-COPY --from=build /src/guests/header-chain/guest/target/riscv32im-risc0-zkvm-elf/release target/riscv-guest/riscv32im-risc0-zkvm-elf/docker/header_chain_guest
-COPY --from=build /src/guests/header-chain/guest/target/riscv32im-risc0-zkvm-elf/release/header-chain-guest elfs/${BITCOIN_NETWORK}-header-chain-guest
+COPY --from=build /src/header-chain-guest/guest/target/riscv32im-risc0-zkvm-elf/release ../target/riscv-guest/riscv32im-risc0-zkvm-elf/docker/header_chain_guest
+COPY --from=build /src/header-chain-guest/guest/target/riscv32im-risc0-zkvm-elf/release/header-chain-guest ../elfs/${BITCOIN_NETWORK}-header-chain-guest

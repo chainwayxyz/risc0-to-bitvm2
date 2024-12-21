@@ -1,8 +1,8 @@
 [workspace]
 resolver = "2"
 members = [
-  "header-chain",
-  "final-circuit",
+  "header-chain-guest",
+  "final-guest",
 ]
 
 # Always optimize; otherwise tests take excessively long.

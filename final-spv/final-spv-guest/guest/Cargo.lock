@@ -350,18 +350,18 @@ dependencies = [
 
 [[package]]
 name = "bytemuck"
-version = "1.20.0"
+version = "1.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8b37c88a63ffd85d15b406896cc343916d7cf57838a847b3a6f2ca5d39a5695a"
+checksum = "ef657dfab802224e671f5818e9a4935f9b1957ed18e58292690cc39e7a4092a3"
 dependencies = [
  "bytemuck_derive",
 ]
 
 [[package]]
 name = "bytemuck_derive"
-version = "1.8.0"
+version = "1.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bcfcc3cd946cb52f0bbfdbbcfa2f4e24f75ebb6c0e1002f7c25904fada18b9ec"
+checksum = "3fa76293b4f7bb636ab88fd78228235b5248b4d05cc589aed610f954af5d7c7a"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -394,19 +394,6 @@ name = "cfg_aliases"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "613afe47fcd5fac7ccf1db93babcb082c5994d996f20b8b159f2ad1658eb5724"
-
-[[package]]
-name = "circuits"
-version = "0.1.0"
-dependencies = [
- "bitcoin",
- "blake3",
- "borsh",
- "crypto-bigint",
- "risc0-zkvm",
- "serde",
- "sha2",
-]
 
 [[package]]
 name = "const-oid"
@@ -523,10 +510,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5443807d6dff69373d433ab9ef5378ad8df50ca6298caf15de6e52e24aaf54d5"
 
 [[package]]
-name = "final-guest"
+name = "final-spv"
 version = "0.1.0"
 dependencies = [
- "circuits",
+ "bitcoin",
+ "blake3",
+ "borsh",
+ "crypto-bigint",
+ "header-chain",
+ "risc0-zkvm",
+ "serde",
+ "sha2",
+]
+
+[[package]]
+name = "final-spv-guest"
+version = "0.1.0"
+dependencies = [
+ "final-spv",
 ]
 
 [[package]]
@@ -591,6 +592,18 @@ name = "hashbrown"
 version = "0.15.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bf151400ff0baff5465007dd2f3e717f3fe502074ca563069ce3a6629d07b289"
+
+[[package]]
+name = "header-chain"
+version = "0.1.0"
+dependencies = [
+ "bitcoin",
+ "borsh",
+ "crypto-bigint",
+ "risc0-zkvm",
+ "serde",
+ "sha2",
+]
 
 [[package]]
 name = "hex"
