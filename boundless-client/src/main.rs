@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use alloy::signers::local::PrivateKeySigner;
 use alloy_primitives::{utils::parse_ether, Address};
@@ -16,9 +16,6 @@ use risc0_zkvm::{compute_image_id, default_executor, ExecutorEnv};
 use url::Url;
 
 const ELF: &[u8] = include_bytes!("../../elfs/mainnet-header-chain-guest");
-
-/// Timeout for the transaction to be confirmed.
-pub const TX_TIMEOUT: Duration = Duration::from_secs(u64::MAX);
 
 /// Arguments of the publisher CLI.
 #[derive(Parser, Debug)]
@@ -71,7 +68,7 @@ async fn main() -> Result<(), anyhow::Error> {
     let input = HeaderChainCircuitInput {
         method_id: [0; 8],
         prev_proof: header_chain::header_chain::HeaderChainPrevProofType::GenesisBlock,
-        block_headers: headers[0..2000].to_vec(),
+        block_headers: headers[0..50].to_vec(),
     };
 
     // Create a Boundless client from the provided parameters.
@@ -96,6 +93,7 @@ async fn main() -> Result<(), anyhow::Error> {
 
     // If the input exceeds 2 kB, upload the input and provide its URL instead, as a rule of thumb.
     let input_url = boundless_client.upload_input(&input_bytes).await?;
+    tracing::info!("Uploaded input to {}", input_url);
 
     let env = ExecutorEnv::builder().write_slice(&input_bytes).build()?;
     let session_info = default_executor().execute(env, ELF)?;
@@ -135,19 +133,26 @@ async fn main() -> Result<(), anyhow::Error> {
     println!("Request: {:#?}", request);
 
     // Send the request and wait for it to be completed.
+    let start_time = Instant::now();
     let (request_id, expires_at) = boundless_client.submit_request(&request).await?;
-    tracing::info!("Request 0x{request_id:x} submitted");
+    tracing::info!("Request 0x{request_id:x} submitted at {:?}", start_time);
 
-    // Wait indefinitely for the request to be fulfilled by the market
-    tracing::info!("Waiting for 0x{request_id:x} to be fulfilled (will wait indefinitely)");
+    // Wait for the request to be fulfilled by the market, returning the journal and seal.
+    tracing::info!("Waiting for 0x{request_id:x} to be fulfilled");
     let (journal, seal) = boundless_client
         .wait_for_request_fulfillment(
             request_id,
-            Duration::from_secs(u64::MAX),  // Set to maximum duration
+            Duration::from_secs(10),
             expires_at
         )
         .await?;
+
+    let end_time = Instant::now();
+    let duration = end_time.duration_since(start_time);
     
+    tracing::info!("Request 0x{request_id:x} fulfilled");
+    tracing::info!("End time: {:?}", end_time);
+    tracing::info!("Time taken: {:?}", duration);
     tracing::info!("Request 0x{request_id:x} fulfilled");
     tracing::info!("Journal: {:#?}", journal);
     tracing::info!("Seal: {:#?}", seal);
