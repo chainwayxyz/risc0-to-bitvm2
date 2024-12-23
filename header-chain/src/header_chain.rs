@@ -6,7 +6,7 @@
 /// WARNING: This implementation is not a word-to-word translation of the Bitcoin Core source code.
 use crate::mmr_guest::MMRGuest;
 use bitcoin::{
-    block::{self, Header, Version},
+    block::{Header, Version},
     hashes::Hash,
     BlockHash, CompactTarget, TxMerkleNode,
 };
@@ -36,8 +36,6 @@ pub const NETWORK_TYPE: &str = {
 
 // Const evaluation of network type from environment
 const IS_REGTEST: bool = matches!(NETWORK_TYPE.as_bytes(), b"regtest");
-const WORK_REGTEST: U256 =
-    U256::from_be_hex("0000000000000000000000000000000000000000000000000000000000000002");
 const IS_TESTNET4: bool = matches!(NETWORK_TYPE.as_bytes(), b"testnet4");
 const MINIMUM_WORK_TESTNET: U256 =
     U256::from_be_hex("0000000000000000000000000000000000000000000000000000000100010001");
@@ -306,21 +304,24 @@ pub fn apply_blocks(chain_state: &mut ChainState, block_headers: Vec<CircuitBloc
     };
 
     for block_header in block_headers {
+        chain_state.block_height = chain_state.block_height.wrapping_add(1);
+
         let (target_to_use, expected_bits, work_to_add) = if IS_TESTNET4 {
-            // println!("Testnet4");
-            if block_header.bits == NETWORK_CONSTANTS.max_bits
-                && chain_state.current_target_bits != NETWORK_CONSTANTS.max_bits
-            {
-                // println!("Abnormal block detected. Checking timestamp...");
-                // println!("Block time: {:?}", block_header.time);
-                // println!("Last block time: {:?}", last_block_time);
-                // let max_target_bytes = NETWORK_CONSTANTS.max_target.to_be_bytes();
-                assert!(block_header.time > last_block_time + 1200);
-                (
-                    NETWORK_CONSTANTS.max_target_bytes,
-                    NETWORK_CONSTANTS.max_bits,
-                    MINIMUM_WORK_TESTNET,
-                )
+            if block_header.time > last_block_time + 1200 {
+                // If the block is an epoch block, then it still has to have the real target.
+                if chain_state.block_height % BLOCKS_PER_EPOCH == 0 {
+                    (
+                        current_target_bytes,
+                        chain_state.current_target_bits,
+                        calculate_work(&current_target_bytes),
+                    )
+                } else {
+                    (
+                        NETWORK_CONSTANTS.max_target_bytes,
+                        NETWORK_CONSTANTS.max_bits,
+                        MINIMUM_WORK_TESTNET,
+                    )
+                }
             } else {
                 (
                     current_target_bytes,
@@ -355,7 +356,6 @@ pub fn apply_blocks(chain_state: &mut ChainState, block_headers: Vec<CircuitBloc
         chain_state.block_hashes_mmr.append(new_block_hash);
         chain_state.best_block_hash = new_block_hash;
         current_work = current_work.wrapping_add(&work_to_add);
-        chain_state.block_height = chain_state.block_height.wrapping_add(1);
 
         if !IS_REGTEST && chain_state.block_height % BLOCKS_PER_EPOCH == 0 {
             // println!("Epoch end");

@@ -9,8 +9,8 @@ use boundless_market::{
     contracts::{Input, Offer, Predicate, ProofRequest, Requirements},
     storage::StorageProviderConfig,
 };
-use header_chain::header_chain::{CircuitBlockHeader, HeaderChainCircuitInput};
 use clap::Parser;
+use header_chain::header_chain::{CircuitBlockHeader, HeaderChainCircuitInput};
 use risc0_zkvm::sha::Digestible;
 use risc0_zkvm::{compute_image_id, default_executor, ExecutorEnv};
 use url::Url;
@@ -140,16 +140,12 @@ async fn main() -> Result<(), anyhow::Error> {
     // Wait for the request to be fulfilled by the market, returning the journal and seal.
     tracing::info!("Waiting for 0x{request_id:x} to be fulfilled");
     let (journal, seal) = boundless_client
-        .wait_for_request_fulfillment(
-            request_id,
-            Duration::from_secs(10),
-            expires_at
-        )
+        .wait_for_request_fulfillment(request_id, Duration::from_secs(10), expires_at)
         .await?;
 
     let end_time = Instant::now();
     let duration = end_time.duration_since(start_time);
-    
+
     tracing::info!("Request 0x{request_id:x} fulfilled");
     tracing::info!("End time: {:?}", end_time);
     tracing::info!("Time taken: {:?}", duration);
