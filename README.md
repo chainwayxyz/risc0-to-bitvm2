@@ -3,7 +3,7 @@
 **Warning: This software is experimental and should not be used in production.**
 
 ## Building Risc0 Guests
-First, install `Risc0` toolchain. You can refer to [here]().
+First, install `Risc0` toolchain. You can refer to [here](https://dev.risczero.com/api/zkvm/install).
 
 To build Risc0 guests deterministically, run the following command:
 
@@ -54,13 +54,18 @@ docker build -f docker/prover.Dockerfile . -t risc0-groth16-prover
 cd ..
 ```
 
-
 ### Testing
 
 To test the setup, use:
 
 ```bash
 cargo test -r --package core --bin core -- tests --show-output
+```
+
+## Boundless
+Boundless is a decentralized proving network built by Risc0. You can learn more from [here](https://docs.beboundless.xyz/). To use it,
+```
+RUST_LOG=info PINATA_JWT=<your-pinata-jwt> cargo run --package boundless-client --bin boundless-client -- --rpc-url <your-sepolia-rpc-url> --wallet-private-key <your-private-key> --boundless-market-address 0x01e4130C977b39aaa28A744b8D3dEB23a5297654 --set-verifier-address 0xea6a0Ca4BfD0A6C43081D57672b3B6D43B69265F --storage-provider pinata  --offchain --order-stream-url https://order-stream.beboundless.xyz
 ```
 
 ## Our Approach
