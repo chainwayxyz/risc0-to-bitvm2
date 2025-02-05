@@ -1,4 +1,4 @@
-# Risc0 to BitVM
+# Risc0 to BitVM2
 
 **Warning: This software is experimental and should not be used in production.**
 
