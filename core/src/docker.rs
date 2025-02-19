@@ -112,6 +112,7 @@ pub fn stark_to_succinct(
     let output = Command::new("docker")
         .arg("run")
         .arg("--rm")
+        .arg("--platform=linux/amd64") // Force linux/amd64 platform
         .arg("-v")
         .arg(format!("{}:/mnt", work_dir.to_string_lossy()))
         .arg("ozancw/risc0-to-bitvm2-groth16-prover:latest")
@@ -119,6 +120,7 @@ pub fn stark_to_succinct(
         .stderr(Stdio::piped())
         .output()
         .unwrap();
+
     println!("Output: {:?}", output);
 
     if !output.status.success() {
