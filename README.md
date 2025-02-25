@@ -22,7 +22,7 @@ wget https://static.testnet.citrea.xyz/conf/headers.bin -O mainnet-headers.bin
 ### Usage
 
 ```bash
-./target/release/core None first_10.bin 10
+./target/release/host None first_10.bin 10
 ```
 
 - The first argument is the previous proof file path (`None` if starting from genesis).
@@ -32,7 +32,7 @@ wget https://static.testnet.citrea.xyz/conf/headers.bin -O mainnet-headers.bin
 Example: To verify the previous proof and prove the next 90 Bitcoin headers, run the following command:
 
 ```bash
-./target/release/core first_10.bin first_100.bin 90
+./target/release/host first_10.bin first_100.bin 90
 ```
 
 ## Risc0 to Succinct Proofs
@@ -59,7 +59,7 @@ cd ..
 To test the setup, use:
 
 ```bash
-cargo test -r --package core --bin core -- tests --show-output
+cargo test -r --package host --bin core -- tests --show-output
 ```
 
 ## Boundless

@@ -13,9 +13,6 @@ groth16_proof/groth16/test_verify_for_guest_0001.zkey
 groth16_proof/groth16/test_verify_for_guest_final.zkey
 groth16_proof/groth16/test_verify_for_guest_verification_key.json
 groth16_proof/groth16/test_verifier.sol
-guests/target
-guests/final-circuit/target
-guests/header-chain/target
-guests/final-circuit/guest/target
-guests/header-chain/guest/target
+header-chain/guest/target
+final-spv/guest/target
 *.bin
