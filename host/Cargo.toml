@@ -6,10 +6,10 @@ edition = "2021"
 [dependencies]
 core = { "path" = "../core" }
 borsh.workspace = true
-risc0-zkvm = {version = "=1.2.4", default-features = false, features = ["bonsai", "client", "prove"]}
-risc0-zkp = {version = "=1.2.4", default-features = false, features = ["prove"]}
-risc0-binfmt = {version = "=1.2.4"}
-risc0-circuit-recursion = {version = "=1.2.4"}
+risc0-zkvm = { git = "https://github.com/risc0/risc0.git", rev = "c3b70f1", default-features = false, features = ["bonsai", "client", "prove"]}
+risc0-zkp = { git = "https://github.com/risc0/risc0.git", rev = "c3b70f1", default-features = false, features = ["prove"]}
+risc0-binfmt = { git = "https://github.com/risc0/risc0.git", rev = "c3b70f1" }
+risc0-circuit-recursion = { git = "https://github.com/risc0/risc0.git", rev = "c3b70f1" }
 sha2 =  { version = "0.10.8", default-features = false }
 blake3 = { version = "1.5.0", default-features = false }
 tempfile.workspace = true
