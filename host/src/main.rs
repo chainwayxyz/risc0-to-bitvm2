@@ -1,12 +1,14 @@
 use borsh::BorshDeserialize;
 use risc0_zkvm::{default_prover, ExecutorEnv};
 
+use core::header_chain::{
+    BlockHeaderCircuitOutput, CircuitBlockHeader, HeaderChainCircuitInput, HeaderChainPrevProofType,
+};
 use risc0_circuit_recursion::control_id::BN254_IDENTITY_CONTROL_ID;
 use risc0_zkvm::{compute_image_id, sha::Digestible};
 use risc0_zkvm::{ProverOpts, Receipt, SuccinctReceiptVerifierParameters, SystemState};
 use sha2::Digest;
 use sha2::Sha256;
-use core::header_chain::{BlockHeaderCircuitOutput, CircuitBlockHeader, HeaderChainCircuitInput, HeaderChainPrevProofType};
 use std::{env, fs};
 
 pub mod docker;
@@ -66,7 +68,7 @@ fn main() {
         .map(|header| CircuitBlockHeader::try_from_slice(header).unwrap())
         .collect::<Vec<CircuitBlockHeader>>();
 
-    let HEADER_CHAIN_GUEST_ID: [u32; 8] = compute_image_id(HEADER_CHAIN_GUEST_ELF)
+    let header_chain_guest_id: [u32; 8] = compute_image_id(HEADER_CHAIN_GUEST_ELF)
         .unwrap()
         .as_words()
         .try_into()
@@ -96,7 +98,7 @@ fn main() {
 
     // Prepare the input for the circuit
     let input = HeaderChainCircuitInput {
-        method_id: HEADER_CHAIN_GUEST_ID,
+        method_id: header_chain_guest_id,
         prev_proof,
         block_headers: headers[start..start + batch_size].to_vec(),
     };
@@ -174,7 +176,11 @@ fn reverse_bits_and_copy(input: &[u8], output: &mut [u8]) {
 #[cfg(test)]
 mod tests {
 
-    use core::{final_circuit::FinalCircuitInput, header_chain::BlockHeaderCircuitOutput, merkle_tree::BitcoinMerkleTree, mmr_native::MMRNative, spv::SPV, transaction::CircuitTransaction};
+    use core::{
+        final_circuit::FinalCircuitInput, header_chain::BlockHeaderCircuitOutput,
+        merkle_tree::BitcoinMerkleTree, mmr_native::MMRNative, spv::SPV,
+        transaction::CircuitTransaction,
+    };
 
     use docker::stark_to_succinct;
     use hex_literal::hex;
@@ -199,7 +205,7 @@ mod tests {
     /// Run this test only when build for the mainnet
     #[test]
     fn test_final_circuit() {
-        let final_circuit_elf = include_bytes!("../../elfs/final-spv-guest");
+        let final_circuit_elf = include_bytes!("../../elfs/mainnet-final-spv-guest");
         let header_chain_circuit_elf = include_bytes!("../../elfs/mainnet-header-chain-guest");
         println!(
             "Header chain circuit id: {:#?}",

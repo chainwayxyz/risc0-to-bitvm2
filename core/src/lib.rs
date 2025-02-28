@@ -1,4 +1,3 @@
-
 pub mod final_circuit;
 pub mod header_chain;
 pub mod merkle_tree;

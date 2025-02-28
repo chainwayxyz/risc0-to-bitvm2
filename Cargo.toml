@@ -24,3 +24,17 @@ tracing-subscriber = {version = "0.3.18", features = ["env-filter"] }
 
 # [features]
 # cuda = ["risc0-zkvm/cuda"]
+
+[patch.crates-io]
+ark-ff = { git = "https://github.com/chainwayxyz/algebra/", branch = "new-ate-loop" }
+ark-ec = { git = "https://github.com/chainwayxyz/algebra/", branch = "new-ate-loop" }
+ark-poly = { git = "https://github.com/chainwayxyz/algebra/", branch = "new-ate-loop" }
+ark-serialize = { git = "https://github.com/chainwayxyz/algebra/", branch = "new-ate-loop" }
+ark-bn254 = { git = "https://github.com/chainwayxyz/algebra/", branch = "new-ate-loop", features = [
+  "curve",
+], default-features = false }
+ark-r1cs-std = { git = "https://github.com/arkworks-rs/r1cs-std/" }
+ark-crypto-primitives = { git = "https://github.com/arkworks-rs/crypto-primitives/" }
+ark-relations = { git = "https://github.com/arkworks-rs/snark/" }
+ark-snark = { git = "https://github.com/arkworks-rs/snark/" }
+ark-groth16 = { git = "https://github.com/arkworks-rs/groth16" }
