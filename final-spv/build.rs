@@ -1,4 +1,4 @@
-use std::{collections::HashMap, env, process::Command, vec};
+use std::{env, process::Command};
 
 fn main() {
     println!("cargo:rerun-if-changed=../final_spv_build.dockerfile");
