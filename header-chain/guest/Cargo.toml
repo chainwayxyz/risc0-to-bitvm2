@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 risc0-to-bitvm2-core = { path = "../../core" }
-risc0-zkvm = { version = "1.2.4", default-features = false, features = ['std'] }
+risc0-zkvm = { version = "=1.2.4", default-features = false, features = ['std'] }
 
 [dev-dependencies]
 hex = "0.4.3"
