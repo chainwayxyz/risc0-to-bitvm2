@@ -1,4 +1,4 @@
-use core::{header_chain::{BlockHeaderCircuitOutput, ChainState, HeaderChainCircuitInput, HeaderChainPrevProofType}, zkvm::ZkvmGuest};
+use risc0_to_bitvm2_core::{header_chain::{BlockHeaderCircuitOutput, ChainState, HeaderChainCircuitInput, HeaderChainPrevProofType}, zkvm::ZkvmGuest};
 
 /// The main entry point of the header chain circuit.
 pub fn header_chain_circuit(guest: &impl ZkvmGuest) {

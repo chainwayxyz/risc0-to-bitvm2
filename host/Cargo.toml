@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-core = { "path" = "../core" }
+risc0-to-bitvm2-core = { "path" = "../core" }
 borsh.workspace = true
 risc0-zkvm = {version = "=1.2.4", default-features = false, features = ["bonsai", "client", "prove"]}
 risc0-zkp = {version = "=1.2.4", default-features = false, features = ["prove"]}

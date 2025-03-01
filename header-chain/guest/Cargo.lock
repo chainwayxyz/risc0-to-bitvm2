@@ -383,18 +383,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2459377285ad874054d797f3ccebf984978aa39129f6eafde5cdc8315b612f8"
 
 [[package]]
-name = "core"
-version = "1.0.0"
-dependencies = [
- "bitcoin",
- "borsh",
- "crypto-bigint",
- "risc0-zkvm",
- "serde",
- "sha2",
-]
-
-[[package]]
 name = "core-foundation"
 version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -584,9 +572,9 @@ checksum = "bf151400ff0baff5465007dd2f3e717f3fe502074ca563069ce3a6629d07b289"
 name = "header-chain-guest"
 version = "0.1.0"
 dependencies = [
- "core",
  "hex",
  "hex-literal",
+ "risc0-to-bitvm2-core",
  "risc0-zkvm",
 ]
 
@@ -893,6 +881,18 @@ dependencies = [
  "risc0-zkp",
  "serde",
  "stability",
+]
+
+[[package]]
+name = "risc0-to-bitvm2-core"
+version = "1.0.0"
+dependencies = [
+ "bitcoin",
+ "borsh",
+ "crypto-bigint",
+ "risc0-zkvm",
+ "serde",
+ "sha2",
 ]
 
 [[package]]
