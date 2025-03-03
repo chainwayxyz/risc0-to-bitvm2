@@ -1,4 +1,5 @@
 use borsh::BorshDeserialize;
+use risc0_groth16::VerifyingKeyJson;
 use risc0_zkvm::{default_prover, ExecutorEnv};
 
 use risc0_circuit_recursion::control_id::BN254_IDENTITY_CONTROL_ID;
@@ -173,9 +174,112 @@ fn reverse_bits_and_copy(input: &[u8], output: &mut [u8]) {
     }
 }
 
+fn get_verifying_key_json() -> VerifyingKeyJson {
+    let json_data = r#"
+    {
+        "protocol": "groth16",
+        "curve": "bn128",
+        "nPublic": 1,
+        "vk_alpha_1": [
+        "20491192805390485299153009773594534940189261866228447918068658471970481763042",
+        "9383485363053290200918347156157836566562967994039712273449902621266178545958",
+        "1"
+        ],
+        "vk_beta_2": [
+        [
+        "6375614351688725206403948262868962793625744043794305715222011528459656738731",
+        "4252822878758300859123897981450591353533073413197771768651442665752259397132"
+        ],
+        [
+        "10505242626370262277552901082094356697409835680220590971873171140371331206856",
+        "21847035105528745403288232691147584728191162732299865338377159692350059136679"
+        ],
+        [
+        "1",
+        "0"
+        ]
+        ],
+        "vk_gamma_2": [
+        [
+        "10857046999023057135944570762232829481370756359578518086990519993285655852781",
+        "11559732032986387107991004021392285783925812861821192530917403151452391805634"
+        ],
+        [
+        "8495653923123431417604973247489272438418190587263600148770280649306958101930",
+        "4082367875863433681332203403145435568316851327593401208105741076214120093531"
+        ],
+        [
+        "1",
+        "0"
+        ]
+        ],
+        "vk_delta_2": [
+        [
+        "17373390530484628175439079012547601221793532405373183847591328903803405586286",
+        "4625210858552158309405374705253571552256748541870661454419080699362567957226"
+        ],
+        [
+        "20292316235570350162741350858895467611317790503850491347042646354236531519055",
+        "17004339328415633000851435380698565994375131307744525391751714344270706811231"
+        ],
+        [
+        "1",
+        "0"
+        ]
+        ],
+        "vk_alphabeta_12": [
+        [
+        [
+            "2029413683389138792403550203267699914886160938906632433982220835551125967885",
+            "21072700047562757817161031222997517981543347628379360635925549008442030252106"
+        ],
+        [
+            "5940354580057074848093997050200682056184807770593307860589430076672439820312",
+            "12156638873931618554171829126792193045421052652279363021382169897324752428276"
+        ],
+        [
+            "7898200236362823042373859371574133993780991612861777490112507062703164551277",
+            "7074218545237549455313236346927434013100842096812539264420499035217050630853"
+        ]
+        ],
+        [
+        [
+            "7077479683546002997211712695946002074877511277312570035766170199895071832130",
+            "10093483419865920389913245021038182291233451549023025229112148274109565435465"
+        ],
+        [
+            "4595479056700221319381530156280926371456704509942304414423590385166031118820",
+            "19831328484489333784475432780421641293929726139240675179672856274388269393268"
+        ],
+        [
+            "11934129596455521040620786944827826205713621633706285934057045369193958244500",
+            "8037395052364110730298837004334506829870972346962140206007064471173334027475"
+        ]
+        ]
+        ],
+        "IC": [
+        [
+        "19647329884141636868838662743921462850093495460601527910594807780507527498755",
+        "11866587864098764425295475199808859787294133529274334392579829950494218737898",
+        "1"
+        ],
+        [
+        "2244061991313498397063727186076860978321484653259630566498796511714519280220",
+        "3313153727619754321539238199327739757956770721532533603738719136366368438484",
+        "1"
+        ]
+        ]
+    }
+    "#;
+    let vk: VerifyingKeyJson =
+        serde_json::from_str(json_data).expect("JSON was not well-formatted");
+    vk
+}
+
 #[cfg(test)]
 mod tests {
 
+    use risc0_groth16::VerifyingKeyJson;
     use risc0_to_bitvm2_core::{
         final_circuit::FinalCircuitInput, header_chain::BlockHeaderCircuitOutput,
         merkle_tree::BitcoinMerkleTree, mmr_native::MMRNative, spv::SPV,
@@ -184,7 +288,7 @@ mod tests {
 
     use docker::stark_to_succinct;
     use hex_literal::hex;
-    use risc0_zkvm::compute_image_id;
+    use risc0_zkvm::{compute_image_id, SuccinctReceipt};
 
     const MAINNET_BLOCK_HASHES: [[u8; 32]; 11] = [
         hex!("6fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d6190000000000"),
@@ -199,6 +303,8 @@ mod tests {
         hex!("0508085c47cc849eb80ea905cc7800a3be674ffc57263cf210c59d8d00000000"),
         hex!("e915d9a478e3adf3186c07c61a22228b10fd87df343c92782ecc052c00000000"),
     ];
+
+    use crate::docker::test_stark_to_succinct;
 
     use super::*;
     // #[ignore = "This is to only test final proof generation"]
@@ -258,7 +364,7 @@ mod tests {
         let journal: [u8; 32] = receipt.journal.bytes.clone().try_into().unwrap();
         let (proof, output_json_bytes) =
             stark_to_succinct(succinct_receipt, &receipt.journal.bytes);
-        print!("Proof: {:#?}", proof);
+        println!("Proof: {:#?}", proof);
         let constants_digest = calculate_succinct_output_prefix(final_circuit_id.as_bytes());
         println!("Constants digest: {:#?}", constants_digest);
         println!("Journal: {:#?}", receipt.journal);
@@ -274,5 +380,117 @@ mod tests {
         let final_output_bytes: [u8; 32] = final_output.try_into().unwrap();
         let final_output_trimmed: [u8; 31] = final_output_bytes[..31].try_into().unwrap();
         assert_eq!(final_output_trimmed, output_json_bytes);
+    }
+
+    #[derive(Debug, Clone)]
+    pub struct BitVMSetup {
+        // control_root: [u8; 32],
+        // pre_state: [u8; 32],
+        // post_state: [u8; 32],
+        // id_bn254_fr: [u8; 32],
+        move_to_vault_txid: [u8; 32],
+        watcthower_challenge_wpks_hash: [u8; 32],
+        operator_id: [u8; 32],
+        payout_tx_blockhash: [u8; 20],
+        latest_blockhash: [u8; 20],
+        challenge_sending_watchtowers: [u8; 20],
+    }
+
+    pub const TEST_BITVM_SETUP: BitVMSetup = BitVMSetup {
+        // control_root: [0u8; 32],
+        // pre_state: [0u8; 32],
+        // post_state: [0u8; 32],
+        // id_bn254_fr: [0u8; 32],
+        move_to_vault_txid: [
+            187, 37, 16, 52, 104, 164, 103, 56, 46, 217, 245, 133, 18, 154, 212, 3, 49, 181, 68,
+            37, 21, 93, 111, 15, 174, 140, 121, 147, 145, 238, 46, 127,
+        ],
+        watcthower_challenge_wpks_hash: [
+            116, 216, 207, 17, 240, 166, 16, 227, 208, 229, 191, 107, 233, 150, 159, 42, 222, 101,
+            77, 96, 233, 15, 56, 107, 30, 138, 206, 135, 242, 68, 78, 22,
+        ],
+        operator_id: [
+            2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0,
+        ],
+        payout_tx_blockhash: [
+            203, 228, 88, 12, 216, 97, 185, 239, 128, 152, 124, 141, 167, 201, 168, 8, 0, 0, 0, 0,
+        ],
+        latest_blockhash: [
+            3, 89, 234, 156, 226, 43, 141, 221, 113, 52, 235, 82, 90, 148, 0, 0, 0, 0, 0, 0,
+        ],
+        challenge_sending_watchtowers: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    };
+
+    pub const BRIDGE_CIRCUIT_ELF: &[u8] =
+        include_bytes!("../../mock_bridge_proof/testnet4-bridge-circuit-guest");
+
+    #[test]
+    fn test_bridge_circuit() {
+        let receipt_bytes: &[u8] = include_bytes!("../../mock_bridge_proof/bridge_proof.bin");
+        let receipt: Receipt = Receipt::try_from_slice(receipt_bytes).unwrap();
+
+        let succinct_receipt = receipt.inner.succinct().unwrap().clone();
+        let receipt_claim = succinct_receipt.clone().claim;
+        println!("Receipt claim: {:#?}", receipt_claim);
+        let journal: [u8; 32] = receipt.journal.bytes.clone().try_into().unwrap();
+        let (proof, public_inputs_json, output_json_bytes) =
+            test_stark_to_succinct(succinct_receipt, &receipt.journal.bytes);
+        print!("Proof: {:#?}", proof);
+        let bridge_circuit_id = compute_image_id(BRIDGE_CIRCUIT_ELF).unwrap();
+        let combined_method_id_constant =
+            calculate_succinct_output_prefix(bridge_circuit_id.as_bytes()); // Check if the operations match the expected values part1
+        println!("Constants digest: {:#?}", combined_method_id_constant);
+        println!("Journal: {:#?}", receipt.journal);
+        let mut constants_blake3_input = [0u8; 32];
+        let mut journal_blake3_input = [0u8; 32];
+        let vk_json = get_verifying_key_json();
+        println!("Proof json: {:#?}", proof);
+        println!("Public inputs json: {:#?}", public_inputs_json);
+        println!("Verifying key json: {:#?}", vk_json);
+        let g16_verifier =
+            risc0_groth16::Verifier::from_json(proof, public_inputs_json, vk_json).unwrap();
+        g16_verifier.verify().unwrap();
+
+        reverse_bits_and_copy(&combined_method_id_constant, &mut constants_blake3_input);
+        reverse_bits_and_copy(&journal, &mut journal_blake3_input);
+        let mut hasher = blake3::Hasher::new();
+        hasher.update(&constants_blake3_input);
+        hasher.update(&journal_blake3_input);
+        let final_output = hasher.finalize();
+        let final_output_bytes: [u8; 32] = final_output.try_into().unwrap();
+        let final_output_trimmed: [u8; 31] = final_output_bytes[..31].try_into().unwrap();
+        assert_eq!(final_output_trimmed, output_json_bytes); // Check if the operations match the expected values part2
+
+        // Check if the operations match the expected values part3
+        let mut hasher = Sha256::new();
+        hasher.update(&TEST_BITVM_SETUP.move_to_vault_txid);
+        hasher.update(&TEST_BITVM_SETUP.watcthower_challenge_wpks_hash);
+        hasher.update(&TEST_BITVM_SETUP.operator_id);
+        let deposit_constant: [u8; 32] = hasher
+            .finalize()
+            .try_into()
+            .expect("SHA256 should produce a 32-byte output");
+
+        let mut hasher = blake3::Hasher::new();
+        hasher.update(&TEST_BITVM_SETUP.payout_tx_blockhash);
+        hasher.update(&TEST_BITVM_SETUP.latest_blockhash);
+        hasher.update(&TEST_BITVM_SETUP.challenge_sending_watchtowers);
+        let x = hasher.finalize();
+        let x_bytes: [u8; 32] = x.try_into().unwrap();
+
+        let mut hasher = blake3::Hasher::new();
+        hasher.update(&deposit_constant);
+        hasher.update(&x_bytes);
+        let y = hasher.finalize();
+        let y_bytes: [u8; 32] = y.try_into().unwrap();
+
+        let mut hasher = blake3::Hasher::new();
+        hasher.update(&combined_method_id_constant);
+        hasher.update(&y_bytes);
+        let public_output = hasher.finalize();
+        let public_output_bytes: [u8; 32] = public_output.try_into().unwrap();
+        let public_output_trimmed: [u8; 31] = public_output_bytes[..31].try_into().unwrap();
+        assert_eq!(public_output_trimmed, output_json_bytes);
     }
 }
