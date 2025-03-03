@@ -281,7 +281,9 @@ pub fn test_stark_to_succinct(
     //     values: vec![output_content_dec],
     // };
     let output_str = parsed_json[0].as_str().unwrap(); // Extracts the string from the JSON array
-    let pi_json: PublicInputsJson = PublicInputsJson{ values: vec![parsed_json[0].as_str().unwrap().to_string()]};
+    let pi_json: PublicInputsJson = PublicInputsJson {
+        values: vec![parsed_json[0].as_str().unwrap().to_string()],
+    };
 
     // Step 2: Convert the decimal string to BigUint and then to hexadecimal
     let output_content_hex = BigUint::from_str_radix(output_str, 10)
@@ -298,6 +300,7 @@ pub fn test_stark_to_succinct(
     let output_byte_vec = hex::decode(&output_content_hex).unwrap();
     // let output_byte_vec = hex::decode(output_hex).unwrap();
     let output_bytes: [u8; 31] = output_byte_vec.as_slice().try_into().unwrap();
+    println!("output_bytes: {:?}", output_bytes);
     (proof_json.try_into().unwrap(), pi_json, output_bytes)
 }
 

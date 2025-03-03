@@ -1,3 +1,7 @@
+use ark_bn254::{Bn254, Fq, Fq2, G1Affine, G2Affine};
+use ark_ff::{BigInt, BigInteger, Field, PrimeField};
+use ark_groth16::{PreparedVerifyingKey, Proof, VerifyingKey};
+use ark_serialize::CanonicalDeserialize;
 use borsh::BorshDeserialize;
 use risc0_groth16::VerifyingKeyJson;
 use risc0_zkvm::{default_prover, ExecutorEnv};
@@ -10,9 +14,107 @@ use risc0_zkvm::{compute_image_id, sha::Digestible};
 use risc0_zkvm::{ProverOpts, Receipt, SuccinctReceiptVerifierParameters, SystemState};
 use sha2::Digest;
 use sha2::Sha256;
+use std::str::FromStr;
 use std::{env, fs};
 
 pub mod docker;
+
+const JSON_VK_STR: &str = r#"
+    {
+        "protocol": "groth16",
+        "curve": "bn128",
+        "nPublic": 1,
+        "vk_alpha_1": [
+        "20491192805390485299153009773594534940189261866228447918068658471970481763042",
+        "9383485363053290200918347156157836566562967994039712273449902621266178545958",
+        "1"
+        ],
+        "vk_beta_2": [
+        [
+        "6375614351688725206403948262868962793625744043794305715222011528459656738731",
+        "4252822878758300859123897981450591353533073413197771768651442665752259397132"
+        ],
+        [
+        "10505242626370262277552901082094356697409835680220590971873171140371331206856",
+        "21847035105528745403288232691147584728191162732299865338377159692350059136679"
+        ],
+        [
+        "1",
+        "0"
+        ]
+        ],
+        "vk_gamma_2": [
+        [
+        "10857046999023057135944570762232829481370756359578518086990519993285655852781",
+        "11559732032986387107991004021392285783925812861821192530917403151452391805634"
+        ],
+        [
+        "8495653923123431417604973247489272438418190587263600148770280649306958101930",
+        "4082367875863433681332203403145435568316851327593401208105741076214120093531"
+        ],
+        [
+        "1",
+        "0"
+        ]
+        ],
+        "vk_delta_2": [
+        [
+        "17373390530484628175439079012547601221793532405373183847591328903803405586286",
+        "4625210858552158309405374705253571552256748541870661454419080699362567957226"
+        ],
+        [
+        "20292316235570350162741350858895467611317790503850491347042646354236531519055",
+        "17004339328415633000851435380698565994375131307744525391751714344270706811231"
+        ],
+        [
+        "1",
+        "0"
+        ]
+        ],
+        "vk_alphabeta_12": [
+        [
+        [
+            "2029413683389138792403550203267699914886160938906632433982220835551125967885",
+            "21072700047562757817161031222997517981543347628379360635925549008442030252106"
+        ],
+        [
+            "5940354580057074848093997050200682056184807770593307860589430076672439820312",
+            "12156638873931618554171829126792193045421052652279363021382169897324752428276"
+        ],
+        [
+            "7898200236362823042373859371574133993780991612861777490112507062703164551277",
+            "7074218545237549455313236346927434013100842096812539264420499035217050630853"
+        ]
+        ],
+        [
+        [
+            "7077479683546002997211712695946002074877511277312570035766170199895071832130",
+            "10093483419865920389913245021038182291233451549023025229112148274109565435465"
+        ],
+        [
+            "4595479056700221319381530156280926371456704509942304414423590385166031118820",
+            "19831328484489333784475432780421641293929726139240675179672856274388269393268"
+        ],
+        [
+            "11934129596455521040620786944827826205713621633706285934057045369193958244500",
+            "8037395052364110730298837004334506829870972346962140206007064471173334027475"
+        ]
+        ]
+        ],
+        "IC": [
+        [
+        "19647329884141636868838662743921462850093495460601527910594807780507527498755",
+        "11866587864098764425295475199808859787294133529274334392579829950494218737898",
+        "1"
+        ],
+        [
+        "2244061991313498397063727186076860978321484653259630566498796511714519280220",
+        "3313153727619754321539238199327739757956770721532533603738719136366368438484",
+        "1"
+        ]
+        ]
+    }
+    "#;
 
 const HEADER_CHAIN_GUEST_ELF: &[u8] = {
     match option_env!("BITCOIN_NETWORK") {
@@ -175,116 +277,80 @@ fn reverse_bits_and_copy(input: &[u8], output: &mut [u8]) {
 }
 
 fn get_verifying_key_json() -> VerifyingKeyJson {
-    let json_data = r#"
-    {
-        "protocol": "groth16",
-        "curve": "bn128",
-        "nPublic": 1,
-        "vk_alpha_1": [
-        "20491192805390485299153009773594534940189261866228447918068658471970481763042",
-        "9383485363053290200918347156157836566562967994039712273449902621266178545958",
-        "1"
-        ],
-        "vk_beta_2": [
-        [
-        "6375614351688725206403948262868962793625744043794305715222011528459656738731",
-        "4252822878758300859123897981450591353533073413197771768651442665752259397132"
-        ],
-        [
-        "10505242626370262277552901082094356697409835680220590971873171140371331206856",
-        "21847035105528745403288232691147584728191162732299865338377159692350059136679"
-        ],
-        [
-        "1",
-        "0"
-        ]
-        ],
-        "vk_gamma_2": [
-        [
-        "10857046999023057135944570762232829481370756359578518086990519993285655852781",
-        "11559732032986387107991004021392285783925812861821192530917403151452391805634"
-        ],
-        [
-        "8495653923123431417604973247489272438418190587263600148770280649306958101930",
-        "4082367875863433681332203403145435568316851327593401208105741076214120093531"
-        ],
-        [
-        "1",
-        "0"
-        ]
-        ],
-        "vk_delta_2": [
-        [
-        "17373390530484628175439079012547601221793532405373183847591328903803405586286",
-        "4625210858552158309405374705253571552256748541870661454419080699362567957226"
-        ],
-        [
-        "20292316235570350162741350858895467611317790503850491347042646354236531519055",
-        "17004339328415633000851435380698565994375131307744525391751714344270706811231"
-        ],
-        [
-        "1",
-        "0"
-        ]
-        ],
-        "vk_alphabeta_12": [
-        [
-        [
-            "2029413683389138792403550203267699914886160938906632433982220835551125967885",
-            "21072700047562757817161031222997517981543347628379360635925549008442030252106"
-        ],
-        [
-            "5940354580057074848093997050200682056184807770593307860589430076672439820312",
-            "12156638873931618554171829126792193045421052652279363021382169897324752428276"
-        ],
-        [
-            "7898200236362823042373859371574133993780991612861777490112507062703164551277",
-            "7074218545237549455313236346927434013100842096812539264420499035217050630853"
-        ]
-        ],
-        [
-        [
-            "7077479683546002997211712695946002074877511277312570035766170199895071832130",
-            "10093483419865920389913245021038182291233451549023025229112148274109565435465"
-        ],
-        [
-            "4595479056700221319381530156280926371456704509942304414423590385166031118820",
-            "19831328484489333784475432780421641293929726139240675179672856274388269393268"
-        ],
-        [
-            "11934129596455521040620786944827826205713621633706285934057045369193958244500",
-            "8037395052364110730298837004334506829870972346962140206007064471173334027475"
-        ]
-        ]
-        ],
-        "IC": [
-        [
-        "19647329884141636868838662743921462850093495460601527910594807780507527498755",
-        "11866587864098764425295475199808859787294133529274334392579829950494218737898",
-        "1"
-        ],
-        [
-        "2244061991313498397063727186076860978321484653259630566498796511714519280220",
-        "3313153727619754321539238199327739757956770721532533603738719136366368438484",
-        "1"
-        ]
-        ]
-    }
-    "#;
+    let json_data = JSON_VK_STR;
     let vk: VerifyingKeyJson =
         serde_json::from_str(json_data).expect("JSON was not well-formatted");
     vk
 }
 
+fn get_ark_verifying_key() -> ark_groth16::VerifyingKey<Bn254> {
+        // Alpha in G1
+        let alpha_g1_x = Fq::from_str("20491192805390485299153009773594534940189261866228447918068658471970481763042").unwrap();
+        let alpha_g1_y = Fq::from_str("9383485363053290200918347156157836566562967994039712273449902621266178545958").unwrap();
+        let alpha_g1 = G1Affine::new(alpha_g1_x, alpha_g1_y);
+    
+        // Beta in G2
+        let beta_g2_c0_re = Fq::from_str("6375614351688725206403948262868962793625744043794305715222011528459656738731").unwrap();
+        let beta_g2_c0_im = Fq::from_str("4252822878758300859123897981450591353533073413197771768651442665752259397132").unwrap();
+        let beta_g2_c1_re = Fq::from_str("10505242626370262277552901082094356697409835680220590971873171140371331206856").unwrap();
+        let beta_g2_c1_im = Fq::from_str("21847035105528745403288232691147584728191162732299865338377159692350059136679").unwrap();
+        
+        let beta_g2_c0 = Fq2::new(beta_g2_c0_re, beta_g2_c0_im);
+        let beta_g2_c1 = Fq2::new(beta_g2_c1_re, beta_g2_c1_im);
+        let beta_g2 = G2Affine::new(beta_g2_c0, beta_g2_c1);
+    
+        // Gamma in G2
+        let gamma_g2_c0_re = Fq::from_str("10857046999023057135944570762232829481370756359578518086990519993285655852781").unwrap();
+        let gamma_g2_c0_im = Fq::from_str("11559732032986387107991004021392285783925812861821192530917403151452391805634").unwrap();
+        let gamma_g2_c1_re = Fq::from_str("8495653923123431417604973247489272438418190587263600148770280649306958101930").unwrap();
+        let gamma_g2_c1_im = Fq::from_str("4082367875863433681332203403145435568316851327593401208105741076214120093531").unwrap();
+        
+        let gamma_g2_c0 = Fq2::new(gamma_g2_c0_re, gamma_g2_c0_im);
+        let gamma_g2_c1 = Fq2::new(gamma_g2_c1_re, gamma_g2_c1_im);
+        let gamma_g2 = G2Affine::new(gamma_g2_c0, gamma_g2_c1);
+    
+        // Delta in G2
+        let delta_g2_c0_re = Fq::from_str("17373390530484628175439079012547601221793532405373183847591328903803405586286").unwrap();
+        let delta_g2_c0_im = Fq::from_str("4625210858552158309405374705253571552256748541870661454419080699362567957226").unwrap();
+        let delta_g2_c1_re = Fq::from_str("20292316235570350162741350858895467611317790503850491347042646354236531519055").unwrap();
+        let delta_g2_c1_im = Fq::from_str("17004339328415633000851435380698565994375131307744525391751714344270706811231").unwrap();
+        
+        let delta_g2_c0 = Fq2::new(delta_g2_c0_re, delta_g2_c0_im);
+        let delta_g2_c1 = Fq2::new(delta_g2_c1_re, delta_g2_c1_im);
+        let delta_g2 = G2Affine::new(delta_g2_c0, delta_g2_c1);
+    
+        // Gamma ABC in G1 (first two elements)
+        let mut gamma_abc_g1 = Vec::new();
+        
+        // First element
+        let g1_x = Fq::from_str("19647329884141636868838662743921462850093495460601527910594807780507527498755").unwrap();
+        let g1_y = Fq::from_str("11866587864098764425295475199808859787294133529274334392579829950494218737898").unwrap();
+        gamma_abc_g1.push(G1Affine::new(g1_x, g1_y));
+        
+        // Second element
+        let g1_x = Fq::from_str("2244061991313498397063727186076860978321484653259630566498796511714519280220").unwrap();
+        let g1_y = Fq::from_str("3313153727619754321539238199327739757956770721532533603738719136366368438484").unwrap();
+        gamma_abc_g1.push(G1Affine::new(g1_x, g1_y));
+    
+        // Create the VerifyingKey
+        VerifyingKey::<Bn254> {
+            alpha_g1,
+            beta_g2,
+            gamma_g2,
+            delta_g2,
+            gamma_abc_g1,
+        }
+}
 #[cfg(test)]
 mod tests {
-
-    use risc0_groth16::VerifyingKeyJson;
+    use ark_groth16::Proof;
+    use risc0_groth16::{Seal, VerifyingKeyJson};
     use risc0_to_bitvm2_core::{
         final_circuit::FinalCircuitInput, header_chain::BlockHeaderCircuitOutput,
         merkle_tree::BitcoinMerkleTree, mmr_native::MMRNative, spv::SPV,
         transaction::CircuitTransaction,
     };
+    use serde::ser::Serialize;
 
     use docker::stark_to_succinct;
     use hex_literal::hex;
@@ -420,6 +486,27 @@ mod tests {
             3, 89, 234, 156, 226, 43, 141, 221, 113, 52, 235, 82, 90, 148, 0, 0, 0, 0, 0, 0,
         ],
         challenge_sending_watchtowers: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        // move_to_vault_txid: [
+        //     127, 46, 238, 145, 147, 121, 140, 174, 15, 111, 93, 21, 37, 68, 181, 49, 3, 212, 154,
+        //     18, 133, 245, 217, 46, 56, 103, 164, 104, 52, 16, 37, 187,
+        // ],
+        // watcthower_challenge_wpks_hash: [
+        //     22, 78, 68, 242, 135, 206, 138, 30, 107, 56, 15, 233, 96, 77, 101, 222, 42, 159, 150,
+        //     233, 107, 191, 229, 208, 227, 16, 166, 240, 17, 207, 216, 116,
+        // ],
+        // operator_id: [
+        //     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        //     0, 0, 2,
+        // ],
+        // payout_tx_blockhash: [
+        //     0, 0, 0, 0, 8, 168, 201, 167, 141, 124, 152, 128, 239, 185, 97, 216, 12, 88, 228, 203,
+        // ],
+        // latest_blockhash: [
+        //     0, 0, 0, 0, 0, 0, 148, 90, 82, 235, 52, 113, 221, 141, 43, 226, 156, 234, 89, 3,
+        // ],
+        // challenge_sending_watchtowers: [
+        //     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+        // ],
     };
 
     pub const BRIDGE_CIRCUIT_ELF: &[u8] =
@@ -484,13 +571,179 @@ mod tests {
         hasher.update(&x_bytes);
         let y = hasher.finalize();
         let y_bytes: [u8; 32] = y.try_into().unwrap();
+        println!("Y bytes (Journal): {:#?}", y_bytes);
+
+        let mut combined_method_id_constant_buf = [0u8; 32];
+        let mut journal_buf = [0u8; 32];
+
+        reverse_bits_and_copy(
+            &combined_method_id_constant,
+            &mut combined_method_id_constant_buf,
+        );
+        reverse_bits_and_copy(&y_bytes, &mut journal_buf);
 
         let mut hasher = blake3::Hasher::new();
-        hasher.update(&combined_method_id_constant);
-        hasher.update(&y_bytes);
+        hasher.update(&combined_method_id_constant_buf);
+        hasher.update(&journal_buf);
         let public_output = hasher.finalize();
         let public_output_bytes: [u8; 32] = public_output.try_into().unwrap();
         let public_output_trimmed: [u8; 31] = public_output_bytes[..31].try_into().unwrap();
         assert_eq!(public_output_trimmed, output_json_bytes);
+    }
+
+    #[test]
+    fn test_implement_bridge_circuit() {
+        // Load receipt from the bridge_proof.bin file
+        let receipt_bytes: &[u8] = include_bytes!("../../mock_bridge_proof/bridge_proof.bin");
+        let receipt: Receipt = Receipt::try_from_slice(receipt_bytes).unwrap();
+
+        // Extract the succinct receipt and its claim
+        let succinct_receipt = receipt.inner.succinct().unwrap().clone();
+        let receipt_claim = succinct_receipt.clone().claim;
+        println!("Receipt claim: {:#?}", receipt_claim);
+
+        // Extract journal bytes
+        let journal: [u8; 32] = receipt.journal.bytes.clone().try_into().unwrap();
+
+        // Get proof and output data
+        let (proof, public_inputs_json, output_json_bytes) =
+            test_stark_to_succinct(succinct_receipt, &receipt.journal.bytes);
+        println!("Proof: {:#?}", proof);
+        println!("Risc0 Public inputs json: {:?}", public_inputs_json);
+
+        // Get bridge circuit ID and calculate the combined method ID constant
+        let bridge_circuit_id = compute_image_id(BRIDGE_CIRCUIT_ELF).unwrap();
+        let combined_method_id_constant =
+            calculate_succinct_output_prefix(bridge_circuit_id.as_bytes());
+        println!("Constants digest: {:#?}", combined_method_id_constant);
+        println!("Journal: {:#?}", receipt.journal);
+
+        // Calculate deposit constant using SHA256
+        let mut deposit_hasher = Sha256::new();
+        deposit_hasher.update(&TEST_BITVM_SETUP.move_to_vault_txid);
+        deposit_hasher.update(&TEST_BITVM_SETUP.watcthower_challenge_wpks_hash);
+        deposit_hasher.update(&TEST_BITVM_SETUP.operator_id);
+        let deposit_constant: [u8; 32] = deposit_hasher
+            .finalize()
+            .try_into()
+            .expect("SHA256 should produce a 32-byte output");
+
+        let seal: Seal = proof.try_into().unwrap();
+        let seal_bytes = seal.to_vec();
+        let mut seal_256 = [0u8; 256];
+        seal_256.copy_from_slice(&seal_bytes);
+        println!("Seal bytes: {:?}", seal_bytes);
+        println!("Seal bytes length: {:?}", seal_bytes.len());
+        let ark_proof = from_seal(&seal_256);
+
+        let result = verify_bridge_circuit(
+            deposit_constant,
+            combined_method_id_constant,
+            TEST_BITVM_SETUP.payout_tx_blockhash,
+            TEST_BITVM_SETUP.latest_blockhash,
+            TEST_BITVM_SETUP.challenge_sending_watchtowers,
+            ark_proof,
+        );
+
+        assert!(result, "Bridge circuit verification failed");
+
+        // Additional verification: check if output bytes match
+        let mut constants_blake3_input = [0u8; 32];
+        let mut journal_blake3_input = [0u8; 32];
+
+        // Perform manual verification like in test_bridge_circuit
+        reverse_bits_and_copy(&combined_method_id_constant, &mut constants_blake3_input);
+        reverse_bits_and_copy(&journal, &mut journal_blake3_input);
+
+        let mut hasher = blake3::Hasher::new();
+        hasher.update(&constants_blake3_input);
+        hasher.update(&journal_blake3_input);
+        let final_output = hasher.finalize();
+        let final_output_bytes: [u8; 32] = final_output.try_into().unwrap();
+        let final_output_trimmed: [u8; 31] = final_output_bytes[..31].try_into().unwrap();
+
+        assert_eq!(
+            final_output_trimmed, output_json_bytes,
+            "Output bytes do not match expected value"
+        );
+    }
+}
+
+fn verify_bridge_circuit(
+    deposit_constant: [u8; 32],
+    combined_method_id_constant: [u8; 32],
+    payout_tx_blockhash: [u8; 20],
+    latest_blockhash: [u8; 20],
+    challenge_sending_watchtowers: [u8; 20],
+    proof: ark_groth16::Proof<Bn254>,
+) -> bool {
+    let mut hasher = blake3::Hasher::new();
+    hasher.update(&payout_tx_blockhash);
+    hasher.update(&latest_blockhash);
+    hasher.update(&challenge_sending_watchtowers);
+    let x = hasher.finalize();
+    let x_bytes: [u8; 32] = x.try_into().unwrap();
+
+    let mut hasher = blake3::Hasher::new();
+    hasher.update(&deposit_constant);
+    hasher.update(&x_bytes);
+    let y = hasher.finalize();
+    let y_bytes: [u8; 32] = y.try_into().unwrap();
+    println!("Y bytes (Journal): {:#?}", y_bytes);
+
+    let mut combined_method_id_constant_buf = [0u8; 32];
+    let mut journal_buf = [0u8; 32];
+
+    reverse_bits_and_copy(
+        &combined_method_id_constant,
+        &mut combined_method_id_constant_buf,
+    );
+    reverse_bits_and_copy(&y_bytes, &mut journal_buf);
+
+    let mut hasher = blake3::Hasher::new();
+    hasher.update(&combined_method_id_constant_buf);
+    hasher.update(&journal_buf);
+    let public_output = hasher.finalize();
+
+    let public_output_bytes: [u8; 32] = public_output.try_into().unwrap();
+    println!("Public output bytes: {:#?}", public_output_bytes);
+    let public_input_scalar = ark_bn254::Fr::from_be_bytes_mod_order(&public_output_bytes[0..31]);
+    println!("Public input scalar: {:#?}", public_input_scalar);
+
+    let ark_vk = get_ark_verifying_key();
+    let ark_pvk = ark_groth16::prepare_verifying_key(&ark_vk);
+
+    ark_groth16::Groth16::<ark_bn254::Bn254>::verify_proof(&ark_pvk, &proof, &[public_input_scalar])
+        .unwrap()
+}
+
+pub fn from_seal(seal: &[u8; 256]) -> Proof<Bn254> {
+    let a = G1Affine::new(
+        ark_bn254::Fq::from_be_bytes_mod_order(&seal[0..32]),
+        ark_bn254::Fq::from_be_bytes_mod_order(&seal[32..64]),
+    );
+
+    let b = G2Affine::new(
+        ark_bn254::Fq2::from_base_prime_field_elems([
+            ark_bn254::Fq::from_be_bytes_mod_order(&seal[96..128]),
+            ark_bn254::Fq::from_be_bytes_mod_order(&seal[64..96]),
+        ])
+        .unwrap(),
+        ark_bn254::Fq2::from_base_prime_field_elems([
+            ark_bn254::Fq::from_be_bytes_mod_order(&seal[160..192]),
+            ark_bn254::Fq::from_be_bytes_mod_order(&seal[128..160]),
+        ])
+        .unwrap(),
+    );
+
+    let c = G1Affine::new(
+        ark_bn254::Fq::from_be_bytes_mod_order(&seal[192..224]),
+        ark_bn254::Fq::from_be_bytes_mod_order(&seal[224..256]),
+    );
+
+    Proof {
+        a: a.into(),
+        b: b.into(),
+        c: c.into(),
     }
 }
