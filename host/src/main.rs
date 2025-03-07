@@ -254,25 +254,37 @@ mod tests {
 
         let succinct_receipt = receipt.inner.succinct().unwrap().clone();
         let receipt_claim = succinct_receipt.clone().claim;
-        println!("Receipt claim: {:#?}", receipt_claim);
+        println!("Receipt claim: {:?}", receipt_claim);
         let journal: [u8; 32] = receipt.journal.bytes.clone().try_into().unwrap();
+
+        let constants_digest = calculate_succinct_output_prefix(final_circuit_id.as_bytes());
+        println!("Constants digest: {:?}", constants_digest);
+        println!("Journal: {:?}", receipt.journal);
+
+        let mut hasher = blake3::Hasher::new();
+        hasher.update(&constants_digest);
+        hasher.update(&journal);
+        let final_output = hasher.finalize();
+        let final_output_bytes: [u8; 32] = final_output.try_into().unwrap();
+        println!("Final output WILL BE: {:?}", final_output_bytes);
+        let final_output_trimmed_bytes: [u8; 31] = final_output_bytes[..31].try_into().unwrap();
+        println!("Final output trimmed bytes WILL BE: {:?}", final_output_trimmed_bytes);
+        let final_output_trimmed_hex = hex::encode(final_output_trimmed_bytes);
+        println!("Final output trimmed hex WILL BE: {:?}", final_output_trimmed_hex);
+
+
         let (proof, output_json_bytes) =
             stark_to_succinct(succinct_receipt, &receipt.journal.bytes);
         print!("Proof: {:#?}", proof);
-        let constants_digest = calculate_succinct_output_prefix(final_circuit_id.as_bytes());
-        println!("Constants digest: {:#?}", constants_digest);
-        println!("Journal: {:#?}", receipt.journal);
-        let mut constants_blake3_input = [0u8; 32];
-        let mut journal_blake3_input = [0u8; 32];
 
-        reverse_bits_and_copy(&constants_digest, &mut constants_blake3_input);
-        reverse_bits_and_copy(&journal, &mut journal_blake3_input);
-        let mut hasher = blake3::Hasher::new();
-        hasher.update(&constants_blake3_input);
-        hasher.update(&journal_blake3_input);
-        let final_output = hasher.finalize();
-        let final_output_bytes: [u8; 32] = final_output.try_into().unwrap();
-        let final_output_trimmed: [u8; 31] = final_output_bytes[..31].try_into().unwrap();
-        assert_eq!(final_output_trimmed, output_json_bytes);
+        assert_eq!(final_output_trimmed_bytes, output_json_bytes);
+    }
+
+    #[test]
+    fn test_reverse_bits_and_copy() {
+        let input = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31];
+        let mut output = [0u8; 32];
+        reverse_bits_and_copy(&input, &mut output);
+        assert_eq!(output, [0, 128, 64, 192, 32, 160, 96, 224, 16, 144, 80, 208, 48, 176, 112, 240, 8, 136, 72, 200, 40, 168, 104, 232, 24, 152, 88, 216, 56, 184, 120, 248]);
     }
 }
