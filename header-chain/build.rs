@@ -21,6 +21,7 @@ fn main() {
                 "build",
                 "--platform",
                 "linux/amd64",
+                "--no-cache",
                 "-f",
                 "header_chain_build.dockerfile",
                 "--output",

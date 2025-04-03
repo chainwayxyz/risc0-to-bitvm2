@@ -6,10 +6,10 @@ edition = "2021"
 [dependencies]
 risc0-to-bitvm2-core = { "path" = "../core" }
 borsh.workspace = true
-risc0-zkvm = {version = "=1.2.4", default-features = false, features = ["bonsai", "client", "prove"]}
-risc0-zkp = {version = "=1.2.4", default-features = false, features = ["prove"]}
-risc0-binfmt = {version = "=1.2.4"}
-risc0-circuit-recursion = {version = "=1.2.4"}
+risc0-zkvm = {version = "2.0.0", default-features = false, features = ["bonsai", "client", "prove"]}
+risc0-zkp = {version = "2.0.0", default-features = false, features = ["prove"]}
+risc0-binfmt = {version = "2.0.0"}
+risc0-circuit-recursion = {version = "2.0.0"}
 sha2 =  { version = "0.10.8", default-features = false }
 blake3 = { version = "1.5.0", default-features = false }
 tempfile.workspace = true
