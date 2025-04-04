@@ -6,7 +6,7 @@ members = ["host", "core", "header-chain", "final-spv"]
 
 [workspace.dependencies]
 hex = "0.4.3"
-risc0-zkvm = { version = "2.0.0", features = ["bonsai"]}
+risc0-zkvm = { version = "2.0.1", features = ["bonsai"]}
 risc0-zkp = "2.0.0"
 env_logger = "0.10"
 borsh = {version = "1.5.3", features = ["derive"] }
