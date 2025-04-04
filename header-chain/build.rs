@@ -57,13 +57,13 @@ fn main() {
 
 fn get_guest_options() -> HashMap<&'static str, risc0_build::GuestOptions> {
     let mut guest_pkg_to_options = HashMap::new();
-    let mut features = Vec::new();
+    // let mut features = Vec::new();
     
-    // Add Bitcoin network feature if specified
-    if let Ok(network) = env::var("BITCOIN_NETWORK") {
-        println!("cargo:warning=Building for Bitcoin network: {}", network);
-        features.push(format!("network-{}", network.to_lowercase()));
-    }
+    // // Add Bitcoin network feature if specified
+    // if let Ok(network) = env::var("BITCOIN_NETWORK") {
+    //     println!("cargo:warning=Building for Bitcoin network: {}", network);
+    //     features.push(format!("network-{}", network.to_lowercase()));
+    // }
     
     let opts = if env::var("REPR_GUEST_BUILD").is_ok() {
         let this_package_dir = env::var("CARGO_MANIFEST_DIR").expect("Failed to get manifest dir");
@@ -77,14 +77,14 @@ fn get_guest_options() -> HashMap<&'static str, risc0_build::GuestOptions> {
             .unwrap();
             
         GuestOptionsBuilder::default()
-            .features(features)
+            // .features(features)
             .use_docker(docker_opts)
             .build()
             .unwrap()
     } else {
         println!("cargo:warning=Guest code is not built in docker");
         GuestOptionsBuilder::default()
-            .features(features)
+            // .features(features)
             .build()
             .unwrap()
     };
