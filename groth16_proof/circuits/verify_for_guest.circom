@@ -213,14 +213,18 @@ template VerifyForGuest() {
     component bits_to_u32[16];
     for (var i = 0; i < 8; i++) {
         bits_to_u32[i] = Bits2Num(32);
-        for (var j = 0; j < 32; j++) {
-            bits_to_u32[i].in[j] <== constants_hasher.out[i * 32 + j];
+        for (var j = 0; j < 4; j++) {
+            for (var k = 0; k < 8; k++) {
+                bits_to_u32[i].in[8 * j + k] <== constants_hasher.out[i * 32 + 8 * j + (7 - k)];
+            }
         }
     }
     for (var i = 0; i < 8; i++) {
         bits_to_u32[i + 8] = Bits2Num(32);
-        for (var j = 0; j < 32; j++) {
-            bits_to_u32[8 + i].in[j] <== journal_digest_bits[i * 32 + j];
+        for (var j = 0; j < 4; j++) {
+            for (var k = 0; k < 8; k++) {
+                bits_to_u32[8 + i].in[8 * j + k] <== journal_digest_bits[i * 32 + 8 * j + (7 - k)];
+            }
         }
     }
 
