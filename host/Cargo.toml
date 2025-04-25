@@ -20,6 +20,12 @@ serde_json.workspace = true
 num-bigint.workspace = true
 num-traits.workspace = true
 
+
 [dev-dependencies]
 hex-literal = "0.4.1"
 bitcoin = "0.32.5"
+ark-groth16 = "0.5.0"
+ark-bn254 = "0.5.0"
+ark-ff = "0.5.0"
+ark-serialize = "0.5.0"
+ark-ec = "0.5.0"
