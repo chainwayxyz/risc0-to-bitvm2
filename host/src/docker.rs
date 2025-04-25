@@ -132,6 +132,7 @@ pub fn stark_to_succinct(
     println!("proof_path: {:?}", proof_path);
     let proof_content = std::fs::read_to_string(proof_path).unwrap();
     let output_content_dec = std::fs::read_to_string(output_path).unwrap();
+    println!("output content: {:?}", output_content_dec);
     let proof_json: ProofJson = serde_json::from_str(&proof_content).unwrap();
     // let output_json: Value = serde_json::from_str(&output_content).unwrap();
     // Convert output_content_dec from decimal to hex

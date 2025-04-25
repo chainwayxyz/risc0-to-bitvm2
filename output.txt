@@ -1,0 +1,446 @@
+   Compiling header-chain v0.1.0 (/Users/ozankaymak/developer/chainway/risc0-to-bitvm2/header-chain)
+error: failed to run custom build command for `header-chain v0.1.0 (/Users/ozankaymak/developer/chainway/risc0-to-bitvm2/header-chain)`
+
+Caused by:
+  process didn't exit successfully: `/Users/ozankaymak/developer/chainway/risc0-to-bitvm2/target/release/build/header-chain-e77fa8bbfe4364ec/build-script-build` (exit status: 101)
+  --- stdout
+  cargo:rerun-if-changed=../header_chain_build.dockerfile
+
+  --- stderr
+  Current directory: "/Users/ozankaymak/developer/chainway/risc0-to-bitvm2/header-chain"
+  Project root: "/Users/ozankaymak/developer/chainway/risc0-to-bitvm2"
+  Output directory: "/Users/ozankaymak/developer/chainway/risc0-to-bitvm2/target/riscv-guest/riscv32im-risc0-zkvm-elf/docker"
+  Docker build failed:
+  stdout: 
+  stderr: #0 building with "desktop-linux" instance using docker driver
+
+  #1 [internal] load build definition from header_chain_build.dockerfile
+  #1 transferring dockerfile: 1.56kB done
+  #1 DONE 0.0s
+
+  #2 [auth] risczero/risc0-guest-builder:pull token for registry-1.docker.io
+  #2 DONE 0.0s
+
+  #3 [internal] load metadata for docker.io/risczero/risc0-guest-builder:r0.1.81.0
+  #3 DONE 1.2s
+
+  #4 [internal] load .dockerignore
+  #4 transferring context: 2B done
+  #4 DONE 0.0s
+
+  #5 [build 1/5] FROM docker.io/risczero/risc0-guest-builder:r0.1.81.0@sha256:0e7defd9eed78139314efbe3e66d7218941e85c85f4fa2ece17087a6eb01f263
+  #5 resolve docker.io/risczero/risc0-guest-builder:r0.1.81.0@sha256:0e7defd9eed78139314efbe3e66d7218941e85c85f4fa2ece17087a6eb01f263 done
+  #5 DONE 0.0s
+
+  #6 [internal] load build context
+  #6 transferring context: 236.94kB 0.1s done
+  #6 DONE 0.1s
+
+  #7 [build 2/5] WORKDIR /src
+  #7 CACHED
+
+  #8 [build 3/5] COPY header-chain header-chain
+  #8 CACHED
+
+  #9 [build 4/5] COPY core core
+  #9 CACHED
+
+  #10 [build 5/5] RUN echo "Building for network: testnet4" &&     cd header-chain &&     cargo +risc0 update &&     cd .. &&     cd core &&     cargo +risc0 update &&     cd .. &&     cargo +risc0 fetch --target riscv32im-risc0-zkvm-elf --manifest-path header-chain/guest/Cargo.toml &&     cargo +risc0 build --release --target riscv32im-risc0-zkvm-elf --manifest-path header-chain/guest/Cargo.toml
+  #10 0.098 Building for network: testnet4
+  #10 0.230     Updating crates.io index
+  #10 2.257      Locking 146 packages to latest compatible versions
+  #10 2.259       Adding bitflags v1.3.2 (latest: v2.9.0)
+  #10 2.260       Adding bytemuck_derive v1.8.1 (latest: v1.9.3)
+  #10 2.260       Adding cargo-platform v0.1.9 (latest: v0.2.0)
+  #10 2.260       Adding cobs v0.2.3 (latest: v0.3.0)
+  #10 2.260       Adding const-oid v0.9.6 (latest: v0.10.0)
+  #10 2.261       Adding core-foundation v0.9.4 (latest: v0.10.0)
+  #10 2.261       Adding core-graphics-types v0.1.3 (latest: v0.2.0)
+  #10 2.262       Adding dirs v5.0.1 (latest: v6.0.0)
+  #10 2.262       Adding dirs-sys v0.4.1 (latest: v0.5.0)
+  #10 2.262       Adding embedded-io v0.4.0 (latest: v0.6.1)
+  #10 2.263       Adding generic-array v0.14.7 (latest: v1.2.0)
+  #10 2.263       Adding getrandom v0.2.15 (latest: v0.3.2)
+  #10 2.263       Adding hashbrown v0.14.5 (latest: v0.15.2)
+  #10 2.264       Adding hashlink v0.9.1 (latest: v0.10.0)
+  #10 2.264       Adding hex-literal v0.4.1 (latest: v1.0.0)
+  #10 2.265       Adding malloc_buf v0.0.6 (latest: v1.0.0)
+  #10 2.265       Adding metal v0.29.0 (latest: v0.32.0)
+  #10 2.265       Adding rand_core v0.6.4 (latest: v0.9.3)
+  #10 2.265       Adding redox_users v0.4.6 (latest: v0.5.0)
+  #10 2.270       Adding spin v0.9.8 (latest: v0.10.0)
+  #10 2.270       Adding strum v0.26.3 (latest: v0.27.1)
+  #10 2.270       Adding strum_macros v0.26.4 (latest: v0.27.1)
+  #10 2.272       Adding thiserror v1.0.69 (latest: v2.0.12)
+  #10 2.272       Adding thiserror-impl v1.0.69 (latest: v2.0.12)
+  #10 2.273       Adding wasi v0.11.0+wasi-snapshot-preview1 (latest: v0.14.2+wasi-0.2.4)
+  #10 2.280       Adding windows-sys v0.48.0 (latest: v0.59.0)
+  #10 2.280       Adding windows-targets v0.48.5 (latest: v0.53.0)
+  #10 2.280       Adding windows-targets v0.52.6 (latest: v0.53.0)
+  #10 2.280       Adding windows_aarch64_gnullvm v0.48.5 (latest: v0.53.0)
+  #10 2.280       Adding windows_aarch64_gnullvm v0.52.6 (latest: v0.53.0)
+  #10 2.281       Adding windows_aarch64_msvc v0.48.5 (latest: v0.53.0)
+  #10 2.281       Adding windows_aarch64_msvc v0.52.6 (latest: v0.53.0)
+  #10 2.281       Adding windows_i686_gnu v0.48.5 (latest: v0.53.0)
+  #10 2.281       Adding windows_i686_gnu v0.52.6 (latest: v0.53.0)
+  #10 2.281       Adding windows_i686_gnullvm v0.52.6 (latest: v0.53.0)
+  #10 2.281       Adding windows_i686_msvc v0.48.5 (latest: v0.53.0)
+  #10 2.281       Adding windows_i686_msvc v0.52.6 (latest: v0.53.0)
+  #10 2.281       Adding windows_x86_64_gnu v0.48.5 (latest: v0.53.0)
+  #10 2.281       Adding windows_x86_64_gnu v0.52.6 (latest: v0.53.0)
+  #10 2.281       Adding windows_x86_64_gnullvm v0.48.5 (latest: v0.53.0)
+  #10 2.281       Adding windows_x86_64_gnullvm v0.52.6 (latest: v0.53.0)
+  #10 2.281       Adding windows_x86_64_msvc v0.48.5 (latest: v0.53.0)
+  #10 2.281       Adding windows_x86_64_msvc v0.52.6 (latest: v0.53.0)
+  #10 2.282       Adding wit-bindgen-rt v0.39.0 (latest: v0.41.0)
+  #10 2.282       Adding yaml-rust2 v0.9.0 (latest: v0.10.1)
+  #10 2.282       Adding zerocopy v0.7.35 (latest: v0.8.24)
+  #10 2.282       Adding zerocopy-derive v0.7.35 (latest: v0.8.24)
+  #10 2.418     Updating crates.io index
+  #10 3.851      Locking 144 packages to latest compatible versions
+  #10 3.854       Adding base58ck v0.1.0 (latest: v0.2.0)
+  #10 3.855       Adding bitcoin-internals v0.3.0 (latest: v0.4.0)
+  #10 3.855       Adding bitcoin-io v0.1.3 (latest: v0.2.0)
+  #10 3.855       Adding bitcoin-units v0.1.2 (latest: v0.2.0)
+  #10 3.855       Adding bitcoin_hashes v0.14.0 (latest: v0.16.0)
+  #10 3.856       Adding bitflags v1.3.2 (latest: v2.9.0)
+  #10 3.857       Adding bytemuck_derive v1.8.1 (latest: v1.9.3)
+  #10 3.858       Adding cobs v0.2.3 (latest: v0.3.0)
+  #10 3.858       Adding const-oid v0.9.6 (latest: v0.10.0)
+  #10 3.859       Adding core-foundation v0.9.4 (latest: v0.10.0)
+  #10 3.859       Adding core-graphics-types v0.1.3 (latest: v0.2.0)
+  #10 3.859       Adding crypto-bigint v0.5.5 (latest: v0.6.1)
+  #10 3.861       Adding downcast-rs v1.2.1 (latest: v2.0.1)
+  #10 3.862       Adding embedded-io v0.4.0 (latest: v0.6.1)
+  #10 3.862       Adding generic-array v0.14.7 (latest: v1.2.0)
+  #10 3.863       Adding getrandom v0.2.15 (latest: v0.3.2)
+  #10 3.864       Adding hex-conservative v0.2.1 (latest: v0.3.0)
+  #10 3.864       Adding hex-literal v0.4.1 (latest: v1.0.0)
+  #10 3.866       Adding itertools v0.13.0 (latest: v0.14.0)
+  #10 3.867       Adding malloc_buf v0.0.6 (latest: v1.0.0)
+  #10 3.867       Adding metal v0.29.0 (latest: v0.32.0)
+  #10 3.869       Adding rand v0.8.5 (latest: v0.9.0)
+  #10 3.869       Adding rand_chacha v0.3.1 (latest: v0.9.0)
+  #10 3.869       Adding rand_core v0.6.4 (latest: v0.9.3)
+  #10 3.875       Adding secp256k1 v0.29.1 (latest: v0.30.0)
+  #10 3.877       Adding spin v0.9.8 (latest: v0.10.0)
+  #10 3.879       Adding syn v1.0.109 (latest: v2.0.100)
+  #10 3.882       Adding tracing-subscriber v0.2.25 (latest: v0.3.19)
+  #10 3.882       Adding wasi v0.11.0+wasi-snapshot-preview1 (latest: v0.14.2+wasi-0.2.4)
+  #10 3.885       Adding zerocopy v0.7.35 (latest: v0.8.24)
+  #10 3.886       Adding zerocopy-derive v0.7.35 (latest: v0.8.24)
+  #10 4.034     Updating git repository `https://github.com/risc0/RustCrypto-crypto-bigint`
+  #10 4.968     Updating git repository `https://github.com/risc0/RustCrypto-hashes`
+  #10 6.681  Downloading crates ...
+  #10 7.023   Downloaded tracing-attributes v0.1.28
+  #10 7.055   Downloaded enum-ordinalize v4.3.0
+  #10 7.079   Downloaded ark-snark v0.5.1
+  #10 7.081   Downloaded ark-crypto-primitives-macros v0.5.0
+  #10 7.083   Downloaded hex_lit v0.1.1
+  #10 7.086   Downloaded stability v0.2.1
+  #10 7.102   Downloaded base58ck v0.1.0
+  #10 7.124   Downloaded include_bytes_aligned v0.1.4
+  #10 7.130   Downloaded rrs-lib v0.1.0
+  #10 7.131   Downloaded tracing v0.1.41
+  #10 7.137   Downloaded hex v0.4.3
+  #10 7.144   Downloaded ark-ff-asm v0.5.0
+  #10 7.146   Downloaded downcast-rs v1.2.1
+  #10 7.148   Downloaded zeroize_derive v1.4.2
+  #10 7.150   Downloaded merlin v3.0.0
+  #10 7.152   Downloaded ark-groth16 v0.5.0
+  #10 7.154   Downloaded risc0-zkos-v1compat v2.0.0
+  #10 7.156   Downloaded ark-serialize-derive v0.5.0
+  #10 7.163   Downloaded hex-literal v0.4.1
+  #10 7.167   Downloaded ark-bn254 v0.5.0
+  #10 7.171   Downloaded keccak v0.1.5
+  #10 7.173   Downloaded ark-serialize v0.5.0
+  #10 7.175   Downloaded num-integer v0.1.46
+  #10 7.177   Downloaded ark-std v0.5.0
+  #10 7.180   Downloaded embedded-io v0.4.0
+  #10 7.181   Downloaded cobs v0.2.3
+  #10 7.183   Downloaded unicode-xid v0.2.6
+  #10 7.185   Downloaded bitcoin-internals v0.3.0
+  #10 7.186   Downloaded risc0-binfmt v2.0.0
+  #10 7.196   Downloaded ark-ff-macros v0.5.0
+  #10 7.201   Downloaded bitcoin-io v0.1.3
+  #10 7.203   Downloaded enum-ordinalize-derive v4.3.1
+  #10 7.204   Downloaded no_std_strings v0.1.3
+  #10 7.206   Downloaded embedded-io v0.6.1
+  #10 7.214   Downloaded risc0-core v2.0.0
+  #10 7.215   Downloaded risc0-zkvm-platform v2.0.1
+  #10 7.307   Downloaded bitcoin-units v0.1.2
+  #10 7.310   Downloaded ark-relations v0.5.1
+  #10 7.313   Downloaded postcard v1.1.1
+  #10 7.316   Downloaded risc0-groth16 v2.0.0
+  #10 7.320   Downloaded borsh-derive v1.5.3
+  #10 7.324   Downloaded bytemuck_derive v1.8.1
+  #10 7.326   Downloaded hex-conservative v0.2.1
+  #10 7.329   Downloaded unicode-ident v1.0.14
+  #10 7.332   Downloaded ark-poly v0.5.0
+  #10 7.336   Downloaded derivative v2.2.0
+  #10 7.342   Downloaded bitcoin_hashes v0.14.0
+  #10 7.344   Downloaded anyhow v1.0.94
+  #10 7.348   Downloaded allocator-api2 v0.2.21
+  #10 7.350   Downloaded borsh v1.5.3
+  #10 7.355   Downloaded ark-ec v0.5.0
+  #10 7.359   Downloaded bytemuck v1.21.0
+  #10 7.362   Downloaded tracing-core v0.1.33
+  #10 7.364   Downloaded const-oid v0.9.6
+  #10 7.366   Downloaded proc-macro2 v1.0.92
+  #10 7.369   Downloaded educe v0.6.0
+  #10 7.375   Downloaded blake2 v0.10.6
+  #10 7.377   Downloaded semver v1.0.24
+  #10 7.384   Downloaded ark-ff v0.5.0
+  #10 7.387   Downloaded bech32 v0.11.0
+  #10 7.390   Downloaded serde_derive v1.0.216
+  #10 7.392   Downloaded indexmap v2.7.0
+  #10 7.395   Downloaded serde v1.0.216
+  #10 7.444   Downloaded cc v1.2.5
+  #10 7.448   Downloaded elf v0.7.4
+  #10 7.451   Downloaded secp256k1 v0.29.1
+  #10 7.455   Downloaded risc0-zkp v2.0.0
+  #10 7.459   Downloaded libm v0.2.11
+  #10 7.465   Downloaded hashbrown v0.15.2
+  #10 7.469   Downloaded ark-r1cs-std v0.5.0
+  #10 7.474   Downloaded num-bigint v0.4.6
+  #10 7.478   Downloaded risc0-circuit-recursion v2.0.0
+  #10 7.481   Downloaded tracing-subscriber v0.2.25
+  #10 7.486   Downloaded ark-crypto-primitives v0.5.0
+  #10 7.490   Downloaded derive_more-impl v2.0.1
+  #10 7.493   Downloaded derive_more v2.0.1
+  #10 7.521   Downloaded syn v1.0.109
+  #10 7.562   Downloaded syn v2.0.90
+  #10 7.600   Downloaded bitcoin v0.32.5
+  #10 8.480   Downloaded secp256k1-sys v0.10.1
+  #10 8.856   Downloaded risc0-zkvm v2.0.1
+  #10 8.909   Downloaded risc0-circuit-rv32im v2.0.2
+  #10 9.037   Downloaded risc0-circuit-keccak v2.0.0
+  #10 9.364  Downloading crates ...
+  #10 9.575   Downloaded bit-vec v0.8.0
+  #10 9.587   Downloaded cpufeatures v0.2.16
+  #10 9.761   Downloaded libc v0.2.169
+  #10 9.870    Compiling proc-macro2 v1.0.92
+  #10 9.872    Compiling unicode-ident v1.0.14
+  #10 9.872    Compiling version_check v0.9.5
+  #10 9.872    Compiling typenum v1.17.0
+  #10 9.872    Compiling autocfg v1.4.0
+  #10 9.873    Compiling rand_core v0.6.4
+  #10 9.873    Compiling subtle v2.6.1
+  #10 9.873    Compiling const-oid v0.9.6
+  #10 10.94    Compiling once_cell v1.20.2
+  #10 11.01    Compiling paste v1.0.15
+  #10 11.46    Compiling generic-array v0.14.7
+  #10 11.60    Compiling byteorder v1.5.0
+  #10 11.62    Compiling cfg-if v1.0.0
+  #10 11.96    Compiling num-traits v0.2.19
+  #10 12.09    Compiling arrayvec v0.7.6
+  #10 12.73    Compiling tracing-core v0.1.33
+  #10 12.91    Compiling hashbrown v0.15.2
+  #10 13.55    Compiling quote v1.0.37
+  #10 14.01    Compiling equivalent v1.0.1
+  #10 14.24    Compiling pin-project-lite v0.2.15
+  #10 14.64    Compiling syn v2.0.90
+  #10 14.64    Compiling block-buffer v0.10.4
+  #10 14.70    Compiling crypto-common v0.1.6
+  #10 14.93    Compiling log v0.4.22
+  #10 15.04    Compiling indexmap v2.7.0
+  #10 15.53    Compiling digest v0.10.7
+  #10 15.86    Compiling num-integer v0.1.46
+  #10 15.91    Compiling toml_datetime v0.6.8
+  #10 16.60    Compiling either v1.13.0
+  #10 16.72    Compiling serde v1.0.216
+  #10 16.85    Compiling winnow v0.6.20
+  #10 17.01    Compiling num-bigint v0.4.6
+  #10 17.19    Compiling libm v0.2.11
+  #10 17.84    Compiling itertools v0.13.0
+  #10 17.94    Compiling cfg_aliases v0.2.1
+  #10 18.08    Compiling sha2 v0.10.8 (https://github.com/risc0/RustCrypto-hashes?tag=sha2-v0.10.8-risczero.0#244dc3b0)
+  #10 18.33    Compiling borsh v1.5.3
+  #10 18.34    Compiling blake2 v0.10.6
+  #10 19.61    Compiling toml_edit v0.22.22
+  #10 19.64    Compiling getrandom v0.2.15
+  #10 20.35    Compiling ahash v0.8.11
+  #10 20.76    Compiling anyhow v1.0.94
+  #10 20.94    Compiling zerocopy-derive v0.7.35
+  #10 21.18    Compiling zeroize_derive v1.4.2
+  #10 21.29    Compiling enum-ordinalize-derive v4.3.1
+  #10 21.53    Compiling tracing-attributes v0.1.28
+  #10 22.11    Compiling ark-serialize-derive v0.5.0
+  #10 22.14    Compiling ark-ff-asm v0.5.0
+  #10 22.47    Compiling ark-ff-macros v0.5.0
+  #10 22.96    Compiling zeroize v1.8.1
+  #10 23.12    Compiling zerocopy v0.7.35
+  #10 23.16    Compiling enum-ordinalize v4.3.0
+  #10 23.58    Compiling educe v0.6.0
+  #10 23.66    Compiling serde_derive v1.0.216
+  #10 23.73    Compiling bytemuck_derive v1.8.1
+  #10 23.96    Compiling proc-macro-crate v3.2.0
+  #10 24.15    Compiling tracing v0.1.41
+  #10 24.58    Compiling stability v0.2.1
+  #10 25.17    Compiling ppv-lite86 v0.2.20
+  #10 25.64    Compiling borsh-derive v1.5.3
+  #10 26.06    Compiling risc0-zkp v2.0.0
+  #10 26.15    Compiling bytemuck v1.21.0
+  #10 26.19    Compiling rand_chacha v0.3.1
+  #10 26.33    Compiling allocator-api2 v0.2.21
+  #10 27.22    Compiling rand v0.8.5
+  #10 27.30    Compiling risc0-core v2.0.0
+  #10 28.16    Compiling risc0-zkvm-platform v2.0.1
+  #10 29.10    Compiling ark-std v0.5.0
+  #10 29.42    Compiling hex-literal v0.4.1
+  #10 30.05    Compiling ark-serialize v0.5.0
+  #10 30.07    Compiling semver v1.0.24
+  #10 30.24    Compiling unicode-xid v0.2.6
+  #10 30.44    Compiling syn v1.0.109
+  #10 30.71    Compiling hex v0.4.3
+  #10 30.76    Compiling tracing-subscriber v0.2.25
+  #10 30.86    Compiling cobs v0.2.3
+  #10 31.21    Compiling derive_more-impl v2.0.1
+  #10 31.37    Compiling ark-ff v0.5.0
+  #10 32.00    Compiling bitcoin-io v0.1.3
+  #10 32.05    Compiling spin v0.9.8
+  #10 32.47    Compiling shlex v1.3.0
+  #10 33.35    Compiling lazy_static v1.5.0
+  #10 33.48    Compiling cc v1.2.5
+  #10 33.80    Compiling postcard v1.1.1
+  #10 34.12    Compiling derive_more v2.0.1
+  #10 34.15    Compiling bitcoin-internals v0.3.0
+  #10 35.16    Compiling elf v0.7.4
+  #10 35.48    Compiling keccak v0.1.5
+  #10 35.62    Compiling ark-crypto-primitives-macros v0.5.0
+  #10 35.87    Compiling hex-conservative v0.2.1
+  #10 36.24    Compiling secp256k1-sys v0.10.1
+  #10 37.15    Compiling ark-poly v0.5.0
+  #10 37.27    Compiling ark-relations v0.5.1
+  #10 37.29    Compiling risc0-binfmt v2.0.0
+  #10 37.42    Compiling merlin v3.0.0
+  #10 37.63    Compiling derivative v2.2.0
+  #10 38.02    Compiling bitcoin_hashes v0.14.0
+  #10 38.76    Compiling ark-snark v0.5.1
+  #10 39.17    Compiling ark-ec v0.5.0
+  #10 39.52    Compiling risc0-circuit-recursion v2.0.0
+  #10 40.26    Compiling hex_lit v0.1.1
+  #10 40.53    Compiling downcast-rs v1.2.1
+  #10 40.75    Compiling no_std_strings v0.1.3
+  #10 41.07    Compiling include_bytes_aligned v0.1.4
+  #10 41.29    Compiling bitcoin v0.32.5
+  #10 41.54    Compiling rrs-lib v0.1.0
+  #10 42.01    Compiling ark-crypto-primitives v0.5.0
+  #10 42.29    Compiling ark-bn254 v0.5.0
+  #10 42.33    Compiling risc0-zkos-v1compat v2.0.0
+  #10 42.75    Compiling bitcoin-units v0.1.2
+  #10 42.90    Compiling base58ck v0.1.0
+  #10 42.91    Compiling risc0-circuit-rv32im v2.0.2
+  #10 43.59    Compiling ark-groth16 v0.5.0
+  #10 44.39    Compiling secp256k1 v0.29.1
+  #10 44.84    Compiling risc0-circuit-keccak v2.0.0
+  #10 44.94    Compiling risc0-groth16 v2.0.0
+  #10 44.95    Compiling bech32 v0.11.0
+  #10 44.98    Compiling crypto-bigint v0.5.5 (https://github.com/risc0/RustCrypto-crypto-bigint?tag=v0.5.5-risczero.0#3ab63a6f)
+  #10 46.65    Compiling risc0-zkvm v2.0.1
+  #10 51.87    Compiling risc0-to-bitvm2-core v1.0.0 (/src/core)
+  #10 52.48 warning: unused import: `crate::mmr_guest::MMRGuest`
+  #10 52.48    --> /src/core/src/mmr_native.rs:184:9
+  #10 52.48     |
+  #10 52.48 184 |     use crate::mmr_guest::MMRGuest;
+  #10 52.48     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  #10 52.48     |
+  #10 52.48     = note: `#[warn(unused_imports)]` on by default
+  #10 52.48 
+  #10 52.48 warning: unused import: `super::*`
+  #10 52.48    --> /src/core/src/mmr_native.rs:186:9
+  #10 52.48     |
+  #10 52.48 186 |     use super::*;
+  #10 52.48     |         ^^^^^^^^
+  #10 52.48 
+  #10 54.21    Compiling header-chain-guest v0.1.0 (/src/header-chain/guest)
+  #10 55.84 warning: `risc0-to-bitvm2-core` (lib) generated 2 warnings (run `cargo fix --lib -p risc0-to-bitvm2-core` to apply 2 suggestions)
+  #10 58.46     Finished `release` profile [optimized] target(s) in 49.29s
+  #10 DONE 58.6s
+
+  #11 [export 1/2] COPY --from=build /src/header-chain/guest/target/riscv32im-risc0-zkvm-elf/release ../target/riscv-guest/riscv32im-risc0-zkvm-elf/docker/header_chain_guest
+  #11 CANCELED
+
+  #12 [export 2/2] COPY --from=build /src/header-chain/guest/target/riscv32im-risc0-zkvm-elf/release/header-chain-guest.bin ../elfs/testnet4-header-chain-guest.bin
+  #12 ERROR: failed to calculate checksum of ref 5la4zidfwa9ecij5zmvi7u6v9::yds4pzkb4nzef25pfakfbrd3y: "/src/header-chain/guest/target/riscv32im-risc0-zkvm-elf/release/header-chain-guest.bin": not found
+  ------
+   > [export 2/2] COPY --from=build /src/header-chain/guest/target/riscv32im-risc0-zkvm-elf/release/header-chain-guest.bin ../elfs/testnet4-header-chain-guest.bin:
+  ------
+  header_chain_build.dockerfile:34
+  --------------------
+    32 |     ARG BITCOIN_NETWORK
+    33 |     COPY --from=build /src/header-chain/guest/target/riscv32im-risc0-zkvm-elf/release ../target/riscv-guest/riscv32im-risc0-zkvm-elf/docker/header_chain_guest
+    34 | >>> COPY --from=build /src/header-chain/guest/target/riscv32im-risc0-zkvm-elf/release/header-chain-guest.bin ../elfs/${BITCOIN_NETWORK}-header-chain-guest.bin
+  --------------------
+  ERROR: failed to solve: failed to compute cache key: failed to calculate checksum of ref 5la4zidfwa9ecij5zmvi7u6v9::yds4pzkb4nzef25pfakfbrd3y: "/src/header-chain/guest/target/riscv32im-risc0-zkvm-elf/release/header-chain-guest.bin": not found
+  302  /usr/local/bin/dockerd --config-file /run/config/docker/daemon.json --containerd /run/containerd/containerd.sock --pidfile /run/desktop/docker.pid --swarm-default-advertise-addr=192.168.65.3 --host-gateway-ip 192.168.65.254
+  github.com/moby/buildkit/cache/contenthash.(*cacheContext).checksum
+  	/root/build-deb/engine/vendor/github.com/moby/buildkit/cache/contenthash/checksum.go:860
+  github.com/moby/buildkit/cache/contenthash.(*cacheContext).scanChecksum
+  	/root/build-deb/engine/vendor/github.com/moby/buildkit/cache/contenthash/checksum.go:844
+  github.com/moby/buildkit/cache/contenthash.(*cacheContext).lazyChecksum
+  	/root/build-deb/engine/vendor/github.com/moby/buildkit/cache/contenthash/checksum.go:807
+  github.com/moby/buildkit/cache/contenthash.(*cacheContext).Checksum
+  	/root/build-deb/engine/vendor/github.com/moby/buildkit/cache/contenthash/checksum.go:411
+  github.com/moby/buildkit/cache/contenthash.(*cacheManager).Checksum
+  	/root/build-deb/engine/vendor/github.com/moby/buildkit/cache/contenthash/checksum.go:104
+  github.com/moby/buildkit/cache/contenthash.Checksum
+  	/root/build-deb/engine/vendor/github.com/moby/buildkit/cache/contenthash/checksum.go:55
+  github.com/moby/buildkit/solver/llbsolver/ops.(*fileOp).CacheMap.NewContentHashFunc.func3.1
+  	/root/build-deb/engine/vendor/github.com/moby/buildkit/solver/llbsolver/ops/opsutils/contenthash.go:47
+  golang.org/x/sync/errgroup.(*Group).Go.func1
+  	/root/build-deb/engine/vendor/golang.org/x/sync/errgroup/errgroup.go:78
+  runtime.goexit
+  	/usr/local/go/src/runtime/asm_arm64.s:1222
+
+  302  /usr/local/bin/dockerd --config-file /run/config/docker/daemon.json --containerd /run/containerd/containerd.sock --pidfile /run/desktop/docker.pid --swarm-default-advertise-addr=192.168.65.3 --host-gateway-ip 192.168.65.254
+  github.com/moby/buildkit/cache/contenthash.init
+  	/root/build-deb/engine/vendor/github.com/moby/buildkit/cache/contenthash/checksum.go:28
+  runtime.doInit1
+  	/usr/local/go/src/runtime/proc.go:7176
+  runtime.doInit
+  	/usr/local/go/src/runtime/proc.go:7143
+  runtime.main
+  	/usr/local/go/src/runtime/proc.go:253
+  runtime.goexit
+  	/usr/local/go/src/runtime/asm_arm64.s:1222
+
+  6876 v0.18.0-desktop.2 /Users/ozankaymak/.docker/cli-plugins/docker-buildx buildx build --platform linux/amd64 -f header_chain_build.dockerfile --output type=local,dest=. . --build-arg BITCOIN_NETWORK=testnet4
+  google.golang.org/grpc.(*ClientConn).Invoke
+  	google.golang.org/grpc@v1.66.2/call.go:35
+  github.com/moby/buildkit/api/services/control.(*controlClient).Solve
+  	github.com/moby/buildkit@v0.17.0/api/services/control/control_grpc.pb.go:88
+  github.com/moby/buildkit/client.(*Client).solve.func2
+  	github.com/moby/buildkit@v0.17.0/client/solve.go:269
+  golang.org/x/sync/errgroup.(*Group).Go.func1
+  	golang.org/x/sync@v0.8.0/errgroup/errgroup.go:78
+  runtime.goexit
+  	runtime/asm_arm64.s:1222
+
+  302  /usr/local/bin/dockerd --config-file /run/config/docker/daemon.json --containerd /run/containerd/containerd.sock --pidfile /run/desktop/docker.pid --swarm-default-advertise-addr=192.168.65.3 --host-gateway-ip 192.168.65.254
+  github.com/moby/buildkit/solver.(*edge).createInputRequests.(*edge).createInputRequests.func1.func2
+  	/root/build-deb/engine/vendor/github.com/moby/buildkit/solver/edge.go:912
+  github.com/moby/buildkit/solver/internal/pipe.NewWithFunction.func2
+  	/root/build-deb/engine/vendor/github.com/moby/buildkit/solver/internal/pipe/pipe.go:82
+  runtime.goexit
+  	/usr/local/go/src/runtime/asm_arm64.s:1222
+
+  6876 v0.18.0-desktop.2 /Users/ozankaymak/.docker/cli-plugins/docker-buildx buildx build --platform linux/amd64 -f header_chain_build.dockerfile --output type=local,dest=. . --build-arg BITCOIN_NETWORK=testnet4
+  github.com/moby/buildkit/client.(*Client).solve.func2
+  	github.com/moby/buildkit@v0.17.0/client/solve.go:285
+  golang.org/x/sync/errgroup.(*Group).Go.func1
+  	golang.org/x/sync@v0.8.0/errgroup/errgroup.go:78
+
+  302  /usr/local/bin/dockerd --config-file /run/config/docker/daemon.json --containerd /run/containerd/containerd.sock --pidfile /run/desktop/docker.pid --swarm-default-advertise-addr=192.168.65.3 --host-gateway-ip 192.168.65.254
+  github.com/moby/buildkit/solver/llbsolver/ops.(*fileOp).CacheMap.NewContentHashFunc.func3.1
+  	/root/build-deb/engine/vendor/github.com/moby/buildkit/solver/llbsolver/ops/opsutils/contenthash.go:58
+  golang.org/x/sync/errgroup.(*Group).Go.func1
+  	/root/build-deb/engine/vendor/golang.org/x/sync/errgroup/errgroup.go:78
+
+
+  View build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/jlzwzuxhse6vqs2hb119764ye
+
+
+  thread 'main' panicked at header-chain/build.rs:43:13:
+  Docker build failed
+  note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

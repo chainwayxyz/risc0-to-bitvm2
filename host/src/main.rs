@@ -16,18 +16,18 @@ pub mod docker;
 const HEADER_CHAIN_GUEST_ELF: &[u8] = {
     match option_env!("BITCOIN_NETWORK") {
         Some(network) if matches!(network.as_bytes(), b"mainnet") => {
-            include_bytes!("../../elfs/mainnet-header-chain-guest")
+            include_bytes!("../../elfs/mainnet-header-chain-guest.bin")
         }
         Some(network) if matches!(network.as_bytes(), b"testnet4") => {
-            include_bytes!("../../elfs/testnet4-header-chain-guest")
+            include_bytes!("../../elfs/testnet4-header-chain-guest.bin")
         }
         Some(network) if matches!(network.as_bytes(), b"signet") => {
-            include_bytes!("../../elfs/signet-header-chain-guest")
+            include_bytes!("../../elfs/signet-header-chain-guest.bin")
         }
         Some(network) if matches!(network.as_bytes(), b"regtest") => {
-            include_bytes!("../../elfs/regtest-header-chain-guest")
+            include_bytes!("../../elfs/regtest-header-chain-guest.bin")
         }
-        None => include_bytes!("../../elfs/mainnet-header-chain-guest"),
+        None => include_bytes!("../../elfs/mainnet-header-chain-guest.bin"),
         _ => panic!("Invalid path or ELF file"),
     }
 };
@@ -166,24 +166,24 @@ pub fn calculate_succinct_output_prefix(method_id: &[u8]) -> [u8; 32] {
     result
 }
 
-fn reverse_bits_and_copy(input: &[u8], output: &mut [u8]) {
-    for i in 0..8 {
-        let temp = u32::from_be_bytes(input[4 * i..4 * i + 4].try_into().unwrap()).reverse_bits();
-        output[4 * i..4 * i + 4].copy_from_slice(&temp.to_le_bytes());
-    }
-}
-
 #[cfg(test)]
 mod tests {
 
+    use ark_bn254::{Bn254, Fq, Fq2, G1Affine, G2Affine};
+    use ark_ff::{Field, PrimeField};
+    use ark_groth16::{Proof, VerifyingKey};
     use risc0_to_bitvm2_core::{
         final_circuit::FinalCircuitInput, header_chain::BlockHeaderCircuitOutput,
         merkle_tree::BitcoinMerkleTree, mmr_native::MMRNative, spv::SPV,
         transaction::CircuitTransaction,
     };
+    use std::str::FromStr;
+
+    use risc0_groth16::{Fr, Seal, VerifyingKeyJson};
 
     use docker::stark_to_succinct;
     use hex_literal::hex;
+    use risc0_zkp::verify;
     use risc0_zkvm::compute_image_id;
 
     const MAINNET_BLOCK_HASHES: [[u8; 32]; 11] = [
@@ -200,13 +200,160 @@ mod tests {
         hex!("e915d9a478e3adf3186c07c61a22228b10fd87df343c92782ecc052c00000000"),
     ];
 
+    fn get_ark_verifying_key() -> ark_groth16::VerifyingKey<Bn254> {
+        // Alpha in G1
+        let alpha_g1_x = Fq::from_str(
+            "20491192805390485299153009773594534940189261866228447918068658471970481763042",
+        )
+        .unwrap();
+        let alpha_g1_y = Fq::from_str(
+            "9383485363053290200918347156157836566562967994039712273449902621266178545958",
+        )
+        .unwrap();
+        let alpha_g1 = G1Affine::new(alpha_g1_x, alpha_g1_y);
+
+        // Beta in G2
+        let beta_g2_c0_re = Fq::from_str(
+            "6375614351688725206403948262868962793625744043794305715222011528459656738731",
+        )
+        .unwrap();
+        let beta_g2_c0_im = Fq::from_str(
+            "4252822878758300859123897981450591353533073413197771768651442665752259397132",
+        )
+        .unwrap();
+        let beta_g2_c1_re = Fq::from_str(
+            "10505242626370262277552901082094356697409835680220590971873171140371331206856",
+        )
+        .unwrap();
+        let beta_g2_c1_im = Fq::from_str(
+            "21847035105528745403288232691147584728191162732299865338377159692350059136679",
+        )
+        .unwrap();
+
+        let beta_g2_c0 = Fq2::new(beta_g2_c0_re, beta_g2_c0_im);
+        let beta_g2_c1 = Fq2::new(beta_g2_c1_re, beta_g2_c1_im);
+        let beta_g2 = G2Affine::new(beta_g2_c0, beta_g2_c1);
+
+        // Gamma in G2
+        let gamma_g2_c0_re = Fq::from_str(
+            "10857046999023057135944570762232829481370756359578518086990519993285655852781",
+        )
+        .unwrap();
+        let gamma_g2_c0_im = Fq::from_str(
+            "11559732032986387107991004021392285783925812861821192530917403151452391805634",
+        )
+        .unwrap();
+        let gamma_g2_c1_re = Fq::from_str(
+            "8495653923123431417604973247489272438418190587263600148770280649306958101930",
+        )
+        .unwrap();
+        let gamma_g2_c1_im = Fq::from_str(
+            "4082367875863433681332203403145435568316851327593401208105741076214120093531",
+        )
+        .unwrap();
+
+        let gamma_g2_c0 = Fq2::new(gamma_g2_c0_re, gamma_g2_c0_im);
+        let gamma_g2_c1 = Fq2::new(gamma_g2_c1_re, gamma_g2_c1_im);
+        let gamma_g2 = G2Affine::new(gamma_g2_c0, gamma_g2_c1);
+
+        // Delta in G2 - UPDATED with new values
+        let delta_g2_c0_re = Fq::from_str(
+            "10420867877205876893133313745975881455738550632615496913998847450354955270586",
+        )
+        .unwrap();
+        let delta_g2_c0_im = Fq::from_str(
+            "4970784358684177321190407999320159356963492871900656460482797579713715927354",
+        )
+        .unwrap();
+        let delta_g2_c1_re = Fq::from_str(
+            "18325019056337854959653710209047381344007329682641785424596897563455084359418",
+        )
+        .unwrap();
+        let delta_g2_c1_im = Fq::from_str(
+            "3871725270171259966877731231112193111009067559208525967406931742891406102511",
+        )
+        .unwrap();
+
+        let delta_g2_c0 = Fq2::new(delta_g2_c0_re, delta_g2_c0_im);
+        let delta_g2_c1 = Fq2::new(delta_g2_c1_re, delta_g2_c1_im);
+        let delta_g2 = G2Affine::new(delta_g2_c0, delta_g2_c1);
+
+        // Gamma ABC in G1 (first two elements)
+        let mut gamma_abc_g1 = Vec::new();
+
+        // First element
+        let g1_x = Fq::from_str(
+            "19647329884141636868838662743921462850093495460601527910594807780507527498755",
+        )
+        .unwrap();
+        let g1_y = Fq::from_str(
+            "11866587864098764425295475199808859787294133529274334392579829950494218737898",
+        )
+        .unwrap();
+        gamma_abc_g1.push(G1Affine::new(g1_x, g1_y));
+
+        // Second element
+        let g1_x = Fq::from_str(
+            "2244061991313498397063727186076860978321484653259630566498796511714519280220",
+        )
+        .unwrap();
+        let g1_y = Fq::from_str(
+            "3313153727619754321539238199327739757956770721532533603738719136366368438484",
+        )
+        .unwrap();
+        gamma_abc_g1.push(G1Affine::new(g1_x, g1_y));
+
+        // Create the VerifyingKey
+        VerifyingKey::<Bn254> {
+            alpha_g1,
+            beta_g2,
+            gamma_g2,
+            delta_g2,
+            gamma_abc_g1,
+        }
+    }
+
+    // fn from_seal(seal: &[u8; 256]) -> Proof<Bn254> {
+    fn from_seal(seal: Seal) -> Proof<Bn254> {
+        let seal_bytes: [u8; 256] = seal.to_vec().try_into().unwrap();
+
+        let a = G1Affine::new(
+            ark_bn254::Fq::from_be_bytes_mod_order(&seal_bytes[0..32]),
+            ark_bn254::Fq::from_be_bytes_mod_order(&seal_bytes[32..64]),
+        );
+
+        let b = G2Affine::new(
+            ark_bn254::Fq2::from_base_prime_field_elems([
+                ark_bn254::Fq::from_be_bytes_mod_order(&seal_bytes[96..128]),
+                ark_bn254::Fq::from_be_bytes_mod_order(&seal_bytes[64..96]),
+            ])
+            .unwrap(),
+            ark_bn254::Fq2::from_base_prime_field_elems([
+                ark_bn254::Fq::from_be_bytes_mod_order(&seal_bytes[160..192]),
+                ark_bn254::Fq::from_be_bytes_mod_order(&seal_bytes[128..160]),
+            ])
+            .unwrap(),
+        );
+
+        let c = G1Affine::new(
+            ark_bn254::Fq::from_be_bytes_mod_order(&seal_bytes[192..224]),
+            ark_bn254::Fq::from_be_bytes_mod_order(&seal_bytes[224..256]),
+        );
+
+        Proof {
+            a: a.into(),
+            b: b.into(),
+            c: c.into(),
+        }
+    }
+
     use super::*;
     // #[ignore = "This is to only test final proof generation"]
     /// Run this test only when build for the mainnet
     #[test]
     fn test_final_circuit() {
-        let final_circuit_elf = include_bytes!("../../elfs/mainnet-final-spv-guest");
-        let header_chain_circuit_elf = include_bytes!("../../elfs/mainnet-header-chain-guest");
+        let final_circuit_elf = include_bytes!("../../elfs/mainnet-final-spv-guest.bin");
+        let header_chain_circuit_elf = include_bytes!("../../elfs/mainnet-header-chain-guest.bin");
         println!(
             "Header chain circuit id: {:#?}",
             compute_image_id(header_chain_circuit_elf)
@@ -254,9 +401,11 @@ mod tests {
 
         let succinct_receipt = receipt.inner.succinct().unwrap().clone();
         let receipt_claim = succinct_receipt.clone().claim;
-        println!("Receipt claim: {:?}", receipt_claim);
+        println!("Receipt claim: {:#?}", receipt_claim);
         let journal: [u8; 32] = receipt.journal.bytes.clone().try_into().unwrap();
-
+        let (proof, output_json_bytes) =
+            stark_to_succinct(succinct_receipt, &receipt.journal.bytes);
+        println!("Proof: {:?}", proof);
         let constants_digest = calculate_succinct_output_prefix(final_circuit_id.as_bytes());
         println!("Constants digest: {:?}", constants_digest);
         println!("Journal: {:?}", receipt.journal);
@@ -266,25 +415,23 @@ mod tests {
         hasher.update(&journal);
         let final_output = hasher.finalize();
         let final_output_bytes: [u8; 32] = final_output.try_into().unwrap();
-        println!("Final output WILL BE: {:?}", final_output_bytes);
-        let final_output_trimmed_bytes: [u8; 31] = final_output_bytes[..31].try_into().unwrap();
-        println!("Final output trimmed bytes WILL BE: {:?}", final_output_trimmed_bytes);
-        let final_output_trimmed_hex = hex::encode(final_output_trimmed_bytes);
-        println!("Final output trimmed hex WILL BE: {:?}", final_output_trimmed_hex);
+        let final_output_trimmed: [u8; 31] = final_output_bytes[..31].try_into().unwrap();
+        assert_eq!(final_output_trimmed, output_json_bytes);
 
+        let ark_proof = from_seal(proof);
+        let public_input_scalar = ark_bn254::Fr::from_be_bytes_mod_order(&final_output_trimmed);
+        println!("Public input scalar: {:?}", public_input_scalar);
+        let ark_vk = get_ark_verifying_key();
+        let ark_pvk = ark_groth16::prepare_verifying_key(&ark_vk);
 
-        let (proof, output_json_bytes) =
-            stark_to_succinct(succinct_receipt, &receipt.journal.bytes);
-        print!("Proof: {:#?}", proof);
+        let res = ark_groth16::Groth16::<ark_bn254::Bn254>::verify_proof(
+            &ark_pvk,
+            &ark_proof,
+            &[public_input_scalar],
+        )
+        .unwrap();
 
-        assert_eq!(final_output_trimmed_bytes, output_json_bytes);
-    }
-
-    #[test]
-    fn test_reverse_bits_and_copy() {
-        let input = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31];
-        let mut output = [0u8; 32];
-        reverse_bits_and_copy(&input, &mut output);
-        assert_eq!(output, [0, 128, 64, 192, 32, 160, 96, 224, 16, 144, 80, 208, 48, 176, 112, 240, 8, 136, 72, 200, 40, 168, 104, 232, 24, 152, 88, 216, 56, 184, 120, 248]);
+        println!("Verification result: {:?}", res);
+        assert!(res, "Verification failed");
     }
 }
