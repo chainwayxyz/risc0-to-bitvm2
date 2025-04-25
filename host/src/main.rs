@@ -19,13 +19,13 @@ const HEADER_CHAIN_GUEST_ELF: &[u8] = {
             include_bytes!("../../elfs/mainnet-header-chain-guest.bin")
         }
         Some(network) if matches!(network.as_bytes(), b"testnet4") => {
-            include_bytes!("../../elfs/testnet4-header-chain-guest")
+            include_bytes!("../../elfs/testnet4-header-chain-guest.bin")
         }
         Some(network) if matches!(network.as_bytes(), b"signet") => {
-            include_bytes!("../../elfs/signet-header-chain-guest")
+            include_bytes!("../../elfs/signet-header-chain-guest.bin")
         }
         Some(network) if matches!(network.as_bytes(), b"regtest") => {
-            include_bytes!("../../elfs/regtest-header-chain-guest")
+            include_bytes!("../../elfs/regtest-header-chain-guest.bin")
         }
         None => include_bytes!("../../elfs/mainnet-header-chain-guest.bin"),
         _ => panic!("Invalid path or ELF file"),
@@ -166,13 +166,6 @@ pub fn calculate_succinct_output_prefix(method_id: &[u8]) -> [u8; 32] {
     result
 }
 
-fn reverse_bits_and_copy(input: &[u8], output: &mut [u8]) {
-    for i in 0..8 {
-        let temp = u32::from_be_bytes(input[4 * i..4 * i + 4].try_into().unwrap()).reverse_bits();
-        output[4 * i..4 * i + 4].copy_from_slice(&temp.to_le_bytes());
-    }
-}
-
 #[cfg(test)]
 mod tests {
 
@@ -205,8 +198,8 @@ mod tests {
     /// Run this test only when build for the mainnet
     #[test]
     fn test_final_circuit() {
-        let final_circuit_elf = include_bytes!("../../elfs/mainnet-final-spv-guest");
-        let header_chain_circuit_elf = include_bytes!("../../elfs/mainnet-header-chain-guest");
+        let final_circuit_elf = include_bytes!("../../elfs/mainnet-final-spv-guest.bin");
+        let header_chain_circuit_elf = include_bytes!("../../elfs/mainnet-header-chain-guest.bin");
         println!(
             "Header chain circuit id: {:#?}",
             compute_image_id(header_chain_circuit_elf)
@@ -262,14 +255,10 @@ mod tests {
         let constants_digest = calculate_succinct_output_prefix(final_circuit_id.as_bytes());
         println!("Constants digest: {:#?}", constants_digest);
         println!("Journal: {:#?}", receipt.journal);
-        let mut constants_blake3_input = [0u8; 32];
-        let mut journal_blake3_input = [0u8; 32];
 
-        reverse_bits_and_copy(&constants_digest, &mut constants_blake3_input);
-        reverse_bits_and_copy(&journal, &mut journal_blake3_input);
         let mut hasher = blake3::Hasher::new();
-        hasher.update(&constants_blake3_input);
-        hasher.update(&journal_blake3_input);
+        hasher.update(&constants_digest);
+        hasher.update(&journal);
         let final_output = hasher.finalize();
         let final_output_bytes: [u8; 32] = final_output.try_into().unwrap();
         let final_output_trimmed: [u8; 31] = final_output_bytes[..31].try_into().unwrap();

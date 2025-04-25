@@ -1129,6 +1129,7 @@ dependencies = [
 name = "final-spv"
 version = "0.1.0"
 dependencies = [
+ "risc0-binfmt",
  "risc0-build",
 ]
 
@@ -1378,6 +1379,7 @@ dependencies = [
 name = "header-chain"
 version = "0.1.0"
 dependencies = [
+ "risc0-binfmt",
  "risc0-build",
 ]
 
