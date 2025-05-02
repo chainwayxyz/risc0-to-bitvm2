@@ -146,8 +146,23 @@ template VerifyForGuest() {
     signal input control_root[2]; // This is the control root of the STARK circuit, sort of a Merkle root of some stuff I do not know by heart. CONSTANT FOR A GIVEN CIRCUIT.
     signal input pre_state_digest_bits[256]; // This is the pre-state digest of the STARK circuit. CONSTANT FOR A GIVEN CIRCUIT.
     signal input post_state_digest_bits[256]; // This is the post-state digest of the STARK circuit. CONSTANT FOR A GIVEN CIRCUIT.
-    signal input id_bn254_fr_bits[256]; // This is the code root of the STARK circuit. CONSTANT FOR A GIVEN CIRCUIT.
+    signal input id_bn254_fr_bits[254]; // This is the code root of the STARK circuit. CONSTANT FOR A GIVEN CIRCUIT.
     signal output final_blake3_digest; // This will be Blake3(ALL_CONSTANTS, journal_blake3_digest) and its first 248 bits.
+
+
+    // BINARY CHECKS
+    for (var i = 0; i < 256; i++) {
+        journal_digest_bits[i] * (1 - journal_digest_bits[i]) === 0;
+    }
+    for (var i = 0; i < 256; i++) {
+        pre_state_digest_bits[i] * (1 - pre_state_digest_bits[i]) === 0;
+    }
+    for (var i = 0; i < 256; i++) {
+        post_state_digest_bits[i] * (1 - post_state_digest_bits[i]) === 0;
+    }
+    for (var i = 0; i < 254; i++) {
+        id_bn254_fr_bits[i] * (1 - id_bn254_fr_bits[i]) === 0;
+    }
 
 
     // VERIFY STARK CIRCUIT
@@ -168,22 +183,23 @@ template VerifyForGuest() {
         claim.post_state_digest_bits[i] <== post_state_digest_bits[i];
     }
 
-
     // This gives the code root of the STARK circuit. Bytes of id_bn254_fr_bits reversed.
-    component id_bn254_fr_b2n = Bits2Num(256);
-    for (var i = 0; i < 32; i++) {
+    component id_bn254_fr_b2n = Bits2Num_strict();
+    for (var i = 0; i < 31; i++) {
         for (var j = 0; j < 8; j++) {
-            id_bn254_fr_b2n.in[255 - (8 * i + j)] <== id_bn254_fr_bits[8 * (31 - i) + j];
+            id_bn254_fr_b2n.in[255 - 8 * (i + 1) - j] <== id_bn254_fr_bits[248 - 8 * (i + 1) + j];
         }
     }
 
+    for (var j = 0; j < 6; j++) {
+        id_bn254_fr_b2n.in[253 - j] <== id_bn254_fr_bits[248 + j];
+    }
 
     stark_verifier.out[0] === control_root[0];
     stark_verifier.out[1] === control_root[1];
     stark_verifier.out[2] === claim.out[0];
     stark_verifier.out[3] === claim.out[1];
     stark_verifier.codeRoot === id_bn254_fr_b2n.out;
-
 
 
     // PREPARE FINAL BLAKE3 DIGEST
@@ -206,8 +222,16 @@ template VerifyForGuest() {
     for (var i = 0; i < 256; i++) {
         constants_hasher.in[512 + i] <== post_state_digest_bits[i];
     }
-    for (var i = 0; i < 256; i++) {
+    for (var i = 0; i < 248; i++) {
         constants_hasher.in[768 + i] <== id_bn254_fr_bits[i];
+    }
+        
+    // Two 0 bits to make the input 1024 bits since id_bn254_fr_bits is 254 bits.
+    constants_hasher.in[1016] <== 0;
+    constants_hasher.in[1017] <== 0;
+
+    for (var i = 0; i < 6; i++) {
+        constants_hasher.in[1018 + i] <== id_bn254_fr_bits[248 + i];
     }
 
     component bits_to_u32[16];
