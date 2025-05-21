@@ -3,6 +3,7 @@ use num_bigint::BigUint;
 use num_traits::Num;
 use risc0_groth16::{to_json, ProofJson, Seal};
 use risc0_zkvm::sha::Digestible;
+use risc0_zkvm::Receipt;
 use risc0_zkvm::{
     sha::Digest, ReceiptClaim, SuccinctReceipt, SuccinctReceiptVerifierParameters, SystemState,
 };
@@ -16,13 +17,33 @@ use std::{
 
 use tempfile::tempdir;
 
+const ID_BN254_FR_BITS: [&str; 254] = [
+    "1", "1", "0", "0", "0", "0", "0", "0", "0", "1", "1", "1", "1", "0", "1", "0", "0", "1", "1",
+    "0", "0", "1", "0", "1", "0", "0", "0", "1", "0", "1", "0", "0", "0", "1", "0", "1", "1", "1",
+    "0", "0", "0", "0", "1", "1", "1", "1", "0", "0", "1", "0", "1", "1", "0", "1", "0", "0", "1",
+    "0", "0", "0", "1", "0", "1", "1", "0", "1", "1", "0", "0", "0", "0", "1", "0", "0", "0", "0",
+    "0", "0", "0", "1", "1", "0", "0", "1", "0", "1", "1", "0", "0", "0", "1", "0", "1", "1", "1",
+    "0", "1", "0", "1", "0", "0", "1", "1", "0", "0", "0", "0", "0", "0", "1", "1", "1", "1", "0",
+    "1", "0", "0", "1", "0", "0", "1", "1", "0", "1", "1", "1", "0", "1", "1", "0", "0", "1", "0",
+    "0", "1", "1", "1", "1", "0", "0", "0", "1", "1", "1", "0", "1", "0", "1", "0", "0", "1", "1",
+    "1", "0", "1", "1", "1", "0", "1", "1", "0", "0", "1", "0", "0", "1", "1", "0", "1", "0", "0",
+    "1", "0", "1", "1", "1", "0", "1", "0", "1", "1", "1", "0", "0", "1", "0", "1", "1", "0", "1",
+    "0", "0", "0", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "0", "1", "0", "1", "1", "0",
+    "0", "0", "0", "0", "0", "0", "0", "1", "1", "0", "1", "0", "0", "1", "1", "0", "1", "1", "0",
+    "0", "1", "1", "0", "0", "1", "1", "0", "1", "1", "1", "0", "0", "1", "0", "0", "0", "1", "0",
+    "0", "0", "0", "0", "1", "0", "0",
+];
+
 pub fn stark_to_succinct(
-    succinct_receipt: SuccinctReceipt<ReceiptClaim>,
+    // succinct_receipt: SuccinctReceipt<ReceiptClaim>,
+    receipt: Receipt,
     journal: &[u8],
 ) -> (Seal, [u8; 31]) {
-    let ident_receipt = risc0_zkvm::recursion::identity_p254(&succinct_receipt).unwrap();
-    let identity_p254_seal_bytes = ident_receipt.get_seal_bytes();
-    let receipt_claim = succinct_receipt.claim.value().unwrap();
+    // let ident_receipt = risc0_zkvm::recursion::identity_p254(&succinct_receipt).unwrap();
+    // let identity_p254_seal_bytes = ident_receipt.get_seal_bytes();
+    // let receipt_claim = succinct_receipt.claim.value().unwrap();
+    let identity_p254_seal_bytes = vec![0u8; 222668];
+    let receipt_claim = receipt.claim().unwrap().value().unwrap();
 
     // This part is from risc0-groth16
     if !is_x86_architecture() {
@@ -40,9 +61,9 @@ pub fn stark_to_succinct(
     let seal_path = work_dir.join("input.json");
     let proof_path = work_dir.join("proof.json");
     let output_path = work_dir.join("public.json");
-    let mut seal_json = Vec::new();
-    to_json(&*identity_p254_seal_bytes, &mut seal_json).unwrap();
-    std::fs::write(seal_path.clone(), seal_json).unwrap();
+    // let mut seal_json = Vec::new();
+    // to_json(&*identity_p254_seal_bytes, &mut seal_json).unwrap();
+    // std::fs::write(seal_path.clone(), seal_json).unwrap();
 
     let pre_state: risc0_zkvm::MaybePruned<SystemState> = receipt_claim.clone().pre;
     println!("pre_state: {:?}", pre_state);
@@ -88,27 +109,34 @@ pub fn stark_to_succinct(
     let a1_dec = to_decimal(&a1_str).unwrap();
     println!("Succinct control root a0 dec: {:?}", a0_dec);
     println!("Succinct control root a1 dec: {:?}", a1_dec);
-    println!("CONTROL_ID: {:?}", ident_receipt.control_id);
-    let mut id_bn254_fr_bits: Vec<String> = ident_receipt
-        .control_id
-        .as_bytes()
+    // println!("CONTROL_ID: {:?}", ident_receipt.control_id);
+    // let mut id_bn254_fr_bits: Vec<String> = ident_receipt
+    //     .control_id
+    //     .as_bytes()
+    //     .iter()
+    //     .flat_map(|&byte| (0..8).rev().map(move |i| ((byte >> i) & 1).to_string()))
+    //     .collect();
+    // println!("id_bn254_fr_bits: {:?}", id_bn254_fr_bits);
+    // // remove 248th and 249th bits
+    // id_bn254_fr_bits.remove(248);
+    // id_bn254_fr_bits.remove(248);
+
+    // println!(
+    //     "id_bn254_fr_bits after removing 2 extra bits: {:?}",
+    //     id_bn254_fr_bits
+    // );
+
+    let id_bn254_fr_bits: Vec<String> = ID_BN254_FR_BITS
         .iter()
-        .flat_map(|&byte| (0..8).rev().map(move |i| ((byte >> i) & 1).to_string()))
+        .map(|&bit| bit.to_string())
         .collect();
-    println!("id_bn254_fr_bits: {:?}", id_bn254_fr_bits);
-    // remove 248th and 249th bits
-    id_bn254_fr_bits.remove(248);
-    id_bn254_fr_bits.remove(248);
 
-    println!(
-        "id_bn254_fr_bits after removing 2 extra bits: {:?}",
-        id_bn254_fr_bits
-    );
+    // let mut seal_json: Value = {
+    //     let file_content = fs::read_to_string(&seal_path).unwrap();
+    //     serde_json::from_str(&file_content).unwrap()
+    // };
 
-    let mut seal_json: Value = {
-        let file_content = fs::read_to_string(&seal_path).unwrap();
-        serde_json::from_str(&file_content).unwrap()
-    };
+    let mut seal_json: Value = serde_json::json!({});
 
     seal_json["journal_digest_bits"] = journal_bits.into();
     seal_json["pre_state_digest_bits"] = pre_state_digest_bits.into();
@@ -123,7 +151,7 @@ pub fn stark_to_succinct(
         .arg("--platform=linux/amd64") // Force linux/amd64 platform
         .arg("-v")
         .arg(format!("{}:/mnt", work_dir.to_string_lossy()))
-        .arg("ozancw/risc0-to-bitvm2-groth16-prover:latest")
+        .arg("risc0-test-groth16-prover")
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .output()
