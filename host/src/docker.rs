@@ -1,7 +1,7 @@
 use hex::ToHex;
 use num_bigint::BigUint;
 use num_traits::Num;
-use risc0_groth16::{to_json, ProofJson, Seal};
+use risc0_groth16::{to_json, ProofJson, PublicInputsJson, Seal, Verifier, VerifyingKeyJson};
 use risc0_zkvm::sha::Digestible;
 use risc0_zkvm::Receipt;
 use risc0_zkvm::{
@@ -16,6 +16,8 @@ use std::{
 };
 
 use tempfile::tempdir;
+
+use crate::TEST_VK_JSON;
 
 const ID_BN254_FR_BITS: [&str; 254] = [
     "1", "1", "0", "0", "0", "0", "0", "0", "0", "1", "1", "1", "1", "0", "1", "0", "0", "1", "1",
@@ -38,7 +40,7 @@ pub fn stark_to_succinct(
     // succinct_receipt: SuccinctReceipt<ReceiptClaim>,
     receipt: Receipt,
     journal: &[u8],
-) -> (Seal, [u8; 31]) {
+) {
     // let ident_receipt = risc0_zkvm::recursion::identity_p254(&succinct_receipt).unwrap();
     // let identity_p254_seal_bytes = ident_receipt.get_seal_bytes();
     // let receipt_claim = succinct_receipt.claim.value().unwrap();
@@ -151,7 +153,7 @@ pub fn stark_to_succinct(
         .arg("--platform=linux/amd64") // Force linux/amd64 platform
         .arg("-v")
         .arg(format!("{}:/mnt", work_dir.to_string_lossy()))
-        .arg("risc0-test-groth16-prover")
+        .arg("ozancw/dev-risc0-groth16-prover")
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .output()
@@ -167,31 +169,28 @@ pub fn stark_to_succinct(
     }
     println!("proof_path: {:?}", proof_path);
     let proof_content = std::fs::read_to_string(proof_path).unwrap();
+    println!("proof content: {:?}", proof_content);
     let output_content_dec = std::fs::read_to_string(output_path).unwrap();
     println!("output content: {:?}", output_content_dec);
     let proof_json: ProofJson = serde_json::from_str(&proof_content).unwrap();
-    // let output_json: Value = serde_json::from_str(&output_content).unwrap();
-    // Convert output_content_dec from decimal to hex
-    let parsed_json: Value = serde_json::from_str(&output_content_dec).unwrap();
-    let output_str = parsed_json[0].as_str().unwrap(); // Extracts the string from the JSON array
+    let parsed_output_json: Value = serde_json::from_str(&output_content_dec).unwrap();
+    println!("Parsed output JSON: {:?}", parsed_output_json);
+    let output_str_vec = parsed_output_json.as_array().unwrap().iter().map(|v| {
+        v.as_str()
+            .unwrap()
+            .to_string()
+            .trim_start_matches('"')
+            .trim_end_matches('"')
+            .to_string()
+    }).collect();
+    println!("Output JSON string: {:?}", output_str_vec);
 
-    // Step 2: Convert the decimal string to BigUint and then to hexadecimal
-    let output_content_hex = BigUint::from_str_radix(output_str, 10)
-        .unwrap()
-        .to_str_radix(16);
+    let output_json: PublicInputsJson = PublicInputsJson { values: output_str_vec };
 
-    // If the length of the hexadecimal string is odd, add a leading zero
-    let output_content_hex = if output_content_hex.len() % 2 == 0 {
-        output_content_hex
-    } else {
-        format!("0{}", output_content_hex)
-    };
+    let vk_json: VerifyingKeyJson = serde_json::from_str(TEST_VK_JSON).unwrap();
 
-    // Step 3: Decode the hexadecimal string to a byte vector
-    let output_byte_vec = hex::decode(&output_content_hex).unwrap();
-    // let output_byte_vec = hex::decode(output_hex).unwrap();
-    let output_bytes: [u8; 31] = output_byte_vec.as_slice().try_into().unwrap();
-    (proof_json.try_into().unwrap(), output_bytes)
+    let verifier_json = Verifier::from_json(proof_json, output_json, vk_json).unwrap();
+    verifier_json.verify().unwrap();
 }
 
 fn is_docker_installed() -> bool {
