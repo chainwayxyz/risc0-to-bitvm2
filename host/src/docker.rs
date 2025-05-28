@@ -87,13 +87,15 @@ pub fn stark_to_succinct(
         .collect();
     println!("post_state_digest_bits: {:?}", post_state_digest_bits);
 
-    let mut journal_bits = Vec::new();
-    for byte in journal {
+    let journal_digest: Digest = journal.digest();
+
+    let mut journal_digest_bits = Vec::new();
+    for byte in journal_digest.as_bytes() {
         for i in 0..8 {
-            journal_bits.push((byte >> (7 - i)) & 1);
+            journal_digest_bits.push((byte >> (7 - i)) & 1);
         }
     }
-    println!("journal_bits len: {:?}", journal_bits.len());
+    println!("journal_bits len: {:?}", journal_digest_bits.len());
 
     let succinct_verifier_params = SuccinctReceiptVerifierParameters::default();
     println!("Succinct verifier params: {:?}", succinct_verifier_params);
@@ -140,7 +142,7 @@ pub fn stark_to_succinct(
 
     let mut seal_json: Value = serde_json::json!({});
 
-    seal_json["journal_digest_bits"] = journal_bits.into();
+    seal_json["journal_digest_bits"] = journal_digest_bits.into();
     seal_json["pre_state_digest_bits"] = pre_state_digest_bits.into();
     seal_json["post_state_digest_bits"] = post_state_digest_bits.into();
     seal_json["id_bn254_fr_bits"] = id_bn254_fr_bits.into();
@@ -153,7 +155,7 @@ pub fn stark_to_succinct(
         .arg("--platform=linux/amd64") // Force linux/amd64 platform
         .arg("-v")
         .arg(format!("{}:/mnt", work_dir.to_string_lossy()))
-        .arg("ozancw/dev-risc0-groth16-prover")
+        .arg("ozancw/dev-risc0-groth16-prover-const-digest-len")
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .output()
@@ -175,17 +177,24 @@ pub fn stark_to_succinct(
     let proof_json: ProofJson = serde_json::from_str(&proof_content).unwrap();
     let parsed_output_json: Value = serde_json::from_str(&output_content_dec).unwrap();
     println!("Parsed output JSON: {:?}", parsed_output_json);
-    let output_str_vec = parsed_output_json.as_array().unwrap().iter().map(|v| {
-        v.as_str()
-            .unwrap()
-            .to_string()
-            .trim_start_matches('"')
-            .trim_end_matches('"')
-            .to_string()
-    }).collect();
+    let output_str_vec = parsed_output_json
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| {
+            v.as_str()
+                .unwrap()
+                .to_string()
+                .trim_start_matches('"')
+                .trim_end_matches('"')
+                .to_string()
+        })
+        .collect();
     println!("Output JSON string: {:?}", output_str_vec);
 
-    let output_json: PublicInputsJson = PublicInputsJson { values: output_str_vec };
+    let output_json: PublicInputsJson = PublicInputsJson {
+        values: output_str_vec,
+    };
 
     let vk_json: VerifyingKeyJson = serde_json::from_str(TEST_VK_JSON).unwrap();
 
