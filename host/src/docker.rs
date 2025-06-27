@@ -155,7 +155,7 @@ pub fn stark_to_succinct(
         .arg("--platform=linux/amd64") // Force linux/amd64 platform
         .arg("-v")
         .arg(format!("{}:/mnt", work_dir.to_string_lossy()))
-        .arg("ozancw/dev-risc0-groth16-prover-const-digest-len")
+        .arg("dev-risc0-groth16-prover-const-digest-len")
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .output()

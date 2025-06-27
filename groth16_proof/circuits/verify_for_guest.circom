@@ -3,59 +3,6 @@ pragma circom 2.0.4;
 include "../../circomlib/circuits/sha256/sha256.circom";
 include "../../circomlib/circuits/bitify.circom";
 include "risc0.circom";
-include "blake3_compression.circom";
-include "stark_verify.circom";
-
-template Blake3 () {
-    signal input inp[16]; // 16 32-bit words
-    signal output out[8]; // 8 32-bit words
-
-    component iv = IV();
-    component blake3 = Blake3Compression();
-    for (var i = 0; i < 8; i++) {
-        blake3.h[i] <== iv.out[i];
-    }
-    for (var i = 0; i < 16; i++) {
-        blake3.m[i] <== inp[i];
-    }
-    blake3.t[0] <== 0;
-    blake3.t[1] <== 0;
-    blake3.b <== 64;
-    blake3.d <== 11;
-
-
-    for (var i = 0; i < 8; i++) {
-        out[i] <== blake3.out[i];
-    }
-}
-
-template Blake3_with_scalar_output () {
-    signal input inp[16]; // 16 32-bit words
-    signal output out;
-    signal outbits[256];
-
-    component blake3 = Blake3();
-    for (var i = 0; i < 16; i++) {
-        blake3.inp[i] <== inp[i];
-    }
-
-    component to_bits[8];
-    for (var i = 0; i < 8; i++) {
-        to_bits[i] = to_bits_exact(32);
-        to_bits[i].in <== blake3.out[i];
-        for (var j = 0; j < 32; j++) {
-            outbits[i*32 + j] <== to_bits[i].out[j];
-        }
-    }
-
-    component to_num = Bits2Num(248); // We delete the last 8 bits
-
-    for (var i = 0; i < 248; i++) {
-        var index = (248 - i - 1) - (248 - i - 1)%8 + i%8;
-        to_num.in[index] <== outbits[i];
-    }
-    out <== to_num.out;
-}
 
 // Here, we take the journal (commitments of the stark_verify guest) and generate the claim_digest, which corresponds to the out[2], out[3] of the iop.
 template Journal() {
@@ -141,13 +88,12 @@ template Journal() {
 }
 
 template VerifyForGuest() {
-    signal input iop[25749]; // Succinct proof from the STARK circuit.
     signal input journal_digest_bits[256]; // We assume the journal is 32 bytes long, so 256 bits.
     signal input control_root[2]; // This is the control root of the STARK circuit, sort of a Merkle root of some stuff I do not know by heart. CONSTANT FOR A GIVEN CIRCUIT.
     signal input pre_state_digest_bits[256]; // This is the pre-state digest of the STARK circuit. CONSTANT FOR A GIVEN CIRCUIT.
     signal input post_state_digest_bits[256]; // This is the post-state digest of the STARK circuit. CONSTANT FOR A GIVEN CIRCUIT.
     signal input id_bn254_fr_bits[254]; // This is the code root of the STARK circuit. CONSTANT FOR A GIVEN CIRCUIT.
-    signal output final_blake3_digest; // This will be Blake3(ALL_CONSTANTS, journal_blake3_digest) and its first 248 bits.
+    signal output out[5]; // out[0] = control_root[0], out[1] = control_root[1], out[2] = claim.out[0], out[3] = claim.out[1], out[4] = id_bn254_fr_b2n.out
 
 
     // BINARY CHECKS
@@ -166,11 +112,6 @@ template VerifyForGuest() {
 
 
     // VERIFY STARK CIRCUIT
-
-    component stark_verifier = Verify();
-    for (var i = 0; i < 25749; i++) {
-        stark_verifier.iop[i] <== iop[i];
-    }
 
     component claim = Journal();
     for (var i = 0; i < 256; i++) {
@@ -195,69 +136,12 @@ template VerifyForGuest() {
         id_bn254_fr_b2n.in[253 - j] <== id_bn254_fr_bits[248 + j];
     }
 
-    stark_verifier.out[0] === control_root[0];
-    stark_verifier.out[1] === control_root[1];
-    stark_verifier.out[2] === claim.out[0];
-    stark_verifier.out[3] === claim.out[1];
-    stark_verifier.codeRoot === id_bn254_fr_b2n.out;
-
-
-    // PREPARE FINAL BLAKE3 DIGEST
-
-    component control_root_n2b[2];
-    for (var i = 0; i < 2; i++) {
-        control_root_n2b[i] = Num2Bits(128);
-        control_root_n2b[i].in <== control_root[i];
-    }
-    
-    component constants_hasher = Sha256(1024);
-    for (var i = 0; i < 2; i++) {
-        for (var j = 0; j < 128; j++) {
-            constants_hasher.in[i * 128 + j] <== control_root_n2b[i].out[j];
-        }
-    }
-    for (var i = 0; i < 256; i++) {
-        constants_hasher.in[256 + i] <== pre_state_digest_bits[i];
-    }
-    for (var i = 0; i < 256; i++) {
-        constants_hasher.in[512 + i] <== post_state_digest_bits[i];
-    }
-    for (var i = 0; i < 248; i++) {
-        constants_hasher.in[768 + i] <== id_bn254_fr_bits[i];
-    }
-        
-    // Two 0 bits to make the input 1024 bits since id_bn254_fr_bits is 254 bits.
-    constants_hasher.in[1016] <== 0;
-    constants_hasher.in[1017] <== 0;
-
-    for (var i = 0; i < 6; i++) {
-        constants_hasher.in[1018 + i] <== id_bn254_fr_bits[248 + i];
-    }
-
-    component bits_to_u32[16];
-    for (var i = 0; i < 8; i++) {
-        bits_to_u32[i] = Bits2Num(32);
-        for (var j = 0; j < 4; j++) {
-            for (var k = 0; k < 8; k++) {
-                bits_to_u32[i].in[8 * j + k] <== constants_hasher.out[i * 32 + 8 * j + (7 - k)];
-            }
-        }
-    }
-    for (var i = 0; i < 8; i++) {
-        bits_to_u32[i + 8] = Bits2Num(32);
-        for (var j = 0; j < 4; j++) {
-            for (var k = 0; k < 8; k++) {
-                bits_to_u32[8 + i].in[8 * j + k] <== journal_digest_bits[i * 32 + 8 * j + (7 - k)];
-            }
-        }
-    }
-
-    component final_hasher = Blake3_with_scalar_output();
-
-    for (var i = 0; i < 16; i++) {
-        final_hasher.inp[i] <== bits_to_u32[i].out;
-    }
-    final_blake3_digest <== final_hasher.out;
+    // OUTPUTS
+    out[0] <== control_root[0];
+    out[1] <== control_root[1];
+    out[2] <== claim.out[0];
+    out[3] <== claim.out[1];
+    out[4] <== id_bn254_fr_b2n.out;
 
 }
 
